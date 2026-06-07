@@ -141,7 +141,10 @@
 
         // 編集フォーム内の発注方法切り替え時の表示制御
         function toggleEditFormOrderFields(id) {
-            const type = document.querySelector(`input[name="edit-order-type-${id}"]:checked').value;
+            const targetInput = document.querySelector(`input[name="edit-order-type-${id}"]:checked`);
+            if (!targetInput) return; // 安全対策
+            
+            const type = targetInput.value;
             if (type === 'online') {
                 document.getElementById(`edit-field-online-${id}`).classList.remove("hidden");
                 document.getElementById(`edit-field-phone-${id}`).classList.add("hidden");
