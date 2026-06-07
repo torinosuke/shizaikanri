@@ -82,8 +82,10 @@
         let db;
         try { db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY); } catch (e) { console.error(e); }
 
-        // グローバルにデータを一時保管する配列（セキュリティ回避用）
+        // グローバルデータ保管
         let currentStocksData = [];
+        // 現在どの資材を編集モードにしているかを記録する変数 (null または 資材ID)
+        let editingId = null;
 
         document.addEventListener("DOMContentLoaded", fetchStocks);
 
@@ -93,7 +95,7 @@
             form.classList.toggle("hidden");
         }
 
-        // 新しい資材をSupabaseに挿入する関数
+        // 新しい資材をSupabaseに挿入
         async function addNewShizai() {
             const drug = document.getElementById("input-drug").value.trim();
             const shizai = document.getElementById("input-shizai").value.trim();
@@ -149,9 +151,7 @@
                     return;
                 }
 
-                // データを安全にグローバル記憶
                 currentStocksData = stocks;
-
                 stockListElement.innerHTML = "";
                 alertListElement.innerHTML = "";
                 let hasAlert = false;
@@ -159,17 +159,6 @@
                 stocks.forEach(item => {
                     const isShortage = item.current_stock <= item.min_stock;
                     const isNeedOrder = isShortage && !item.is_ordering;
-
-                    let statusBadge = `<span class="bg-green-100 text-green-800 text-xs font-bold px-2.5 py-0.5 rounded">在庫あり</span>`;
-                    let cardBorder = "border-gray-200";
-
-                    if (item.is_ordering) {
-                        statusBadge = `<span class="bg-yellow-100 text-yellow-800 text-xs font-bold px-2.5 py-0.5 rounded">🟡 取り寄せ中</span>`;
-                        cardBorder = "border-yellow-300 bg-yellow-50/30";
-                    } else if (isShortage) {
-                        statusBadge = `<span class="bg-red-100 text-red-800 text-xs font-bold px-2.5 py-0.5 rounded">🔴 要発注</span>`;
-                        cardBorder = "border-red-300 bg-red-50/50";
-                    }
 
                     if (isNeedOrder) {
                         hasAlert = true;
@@ -180,140 +169,28 @@
                         `;
                     }
 
-                    // 🛠️ セキュリティ（eval）回避：onclickの中に文字列を直接入れず、IDだけを渡すように修正
-                    const cardHtml = `
-                        <div class="bg-white p-4 rounded-xl shadow-sm border ${cardBorder} transition-all">
-                            <div class="flex justify-between items-start mb-2">
+                    // 🛠️ 編集ボタンが押されているカードの場合、入力用フォームを描画する
+                    if (editingId === item.id) {
+                        const editCardHtml = `
+                            <div class="bg-blue-50/50 p-4 rounded-xl shadow-sm border border-blue-400 transition-all text-sm space-y-2">
+                                <div class="font-bold text-blue-800 text-xs mb-1">✏️ 登録情報を編集中</div>
                                 <div>
-                                    <span class="text-xs text-gray-500 block">${item.drug_name}</span>
-                                    <h3 class="font-bold text-gray-800 text-base">${item.shizai_name}</h3>
+                                    <label class="block text-xs text-gray-500 mb-0.5">薬品名</label>
+                                    <input type="text" id="edit-drug-${item.id}" value="${item.drug_name}" class="w-full p-1.5 border rounded">
                                 </div>
-                                <div class="flex flex-col items-end space-y-2">
-                                    ${statusBadge}
-                                    <button onclick="deleteShizai(${item.id})" 
-                                        class="text-gray-400 hover:text-red-500 text-xs transition p-1">
-                                        🗑️ 削除
-                                    </button>
+                                <div>
+                                    <label class="block text-xs text-gray-500 mb-0.5">資材名</label>
+                                    <input type="text" id="edit-shizai-${item.id}" value="${item.shizai_name}" class="w-full p-1.5 border rounded">
                                 </div>
-                            </div>
-                            
-                            <div class="grid grid-cols-2 gap-2 text-sm text-gray-600 mb-3 bg-gray-50 p-2 rounded">
-                                <div>現在在庫: <span class="font-bold text-lg text-gray-900">${item.current_stock}</span> 個</div>
-                                <div>最低在庫: <span class="font-medium">${item.min_stock}</span> 個</div>
-                            </div>
-
-                            <div class="space-y-2">
                                 <div class="grid grid-cols-2 gap-2">
-                                    <button onclick="updateStock(${item.id}, ${item.current_stock - 1})" 
-                                        class="bg-gray-800 hover:bg-gray-900 text-white text-xs font-bold py-2 px-3 rounded-lg active:scale-95 transition"
-                                        ${item.current_stock <= 0 ? 'disabled class="opacity-50"' : ''}>
-                                        払出 (-1)
-                                    </button>
-                                    
-                                    ${item.is_ordering ? `
-                                        <button onclick="toggleOrderStatus(${item.id}, true)" 
-                                            class="bg-gray-400 text-white text-xs font-bold py-2 px-3 rounded-lg transition">
-                                            取り寄せを取消
-                                        </button>
-                                    ` : `
-                                        <button onclick="toggleOrderStatus(${item.id}, false)" 
-                                            class="bg-yellow-500 hover:bg-yellow-600 text-white text-xs font-bold py-2 px-3 rounded-lg active:scale-95 transition">
-                                            取り寄せ中に変更
-                                        </button>
-                                    `}
-                                </div>
-
-                                ${item.is_ordering ? `
-                                    <div class="flex items-center space-x-2 pt-1 border-t border-dashed border-gray-200">
-                                        <input type="number" id="arrival-count-${item.id}" value="5" min="1" 
-                                            class="w-16 p-1 text-center text-sm border rounded focus:ring-2 focus:ring-green-400 outline-none font-bold">
-                                        <span class="text-xs text-gray-500">個が</span>
-                                        <button onclick="executeArrival(${item.id}, ${item.current_stock})" 
-                                            class="flex-1 bg-green-600 hover:bg-green-700 text-white text-xs font-bold py-1.5 px-2 rounded-lg transition shadow-sm">
-                                            入荷完了
-                                        </button>
+                                    <div>
+                                        <label class="block text-xs text-gray-500 mb-0.5">現在在庫</label>
+                                        <input type="number" id="edit-current-${item.id}" value="${item.current_stock}" min="0" class="w-full p-1.5 border rounded">
                                     </div>
-                                ` : ''}
-                            </div>
-                        </div>
-                    `;
-                    stockListElement.innerHTML += cardHtml;
-                });
-
-                if (hasAlert) { alertSection.classList.remove("hidden"); } else { alertSection.classList.add("hidden"); }
-
-            } catch (e) {
-                stockListElement.innerHTML = "";
-                errorText.innerText = "通信エラー: " + e.message;
-                errorArea.classList.remove("hidden");
-            }
-        }
-
-        // 払出用の在庫数更新
-        async function updateStock(id, newStock) {
-            if (newStock < 0) return;
-            const { error } = await db
-                .from('shizai_stocks')
-                .update({ current_stock: newStock })
-                .eq('id', id);
-
-            if (error) alert("更新エラー: " + error.message);
-            else fetchStocks();
-        }
-
-        // 取り寄せ中ステータスの切り替え
-        async function toggleOrderStatus(id, currentOrderingStatus) {
-            const { error } = await db
-                .from('shizai_stocks')
-                .update({ is_ordering: !currentOrderingStatus })
-                .eq('id', id);
-
-            if (error) alert("更新エラー: " + error.message);
-            else fetchStocks();
-        }
-
-        // 入荷処理を実行
-        async function executeArrival(id, currentStock) {
-            const inputElement = document.getElementById(`arrival-count-${id}`);
-            const arrivalCount = parseInt(inputElement.value) || 0;
-
-            if (arrivalCount <= 0) {
-                alert("1以上の数字を入力してください。");
-                return;
-            }
-
-            const newStock = currentStock + arrivalCount;
-
-            const { error } = await db
-                .from('shizai_stocks')
-                .update({ current_stock: newStock, is_ordering: false })
-                .eq('id', id);
-
-            if (error) alert("入荷処理エラー: " + error.message);
-            else fetchStocks();
-        }
-
-        // 🗑️ セキュリティ安全版：資材を削除する関数
-        async function deleteShizai(id) {
-            // 安全に配列内から薬品名と資材名を探し出す
-            const targetItem = currentStocksData.find(item => item.id === id);
-            const nameForConfirm = targetItem ? `${targetItem.drug_name}の${targetItem.shizai_name}` : "この資材";
-
-            const isConfirmed = confirm(`【確認】\n「${nameForConfirm}」の登録を完全に削除しますか？\n（この操作は取り消せません）`);
-            
-            if (!isConfirmed) return;
-
-            const { error } = await db
-                .from('shizai_stocks')
-                .delete()
-                .eq('id', id);
-
-            if (error) {
-                alert("削除エラー: " + error.message);
-            } else {
-                fetchStocks();
-            }
-        }
-    </script>
-</body>
-</html>
+                                    <div>
+                                        <label class="block text-xs text-gray-500 mb-0.5">最低在庫</label>
+                                        <input type="number" id="edit-min-${item.id}" value="${item.min_stock}" min="0" class="w-full p-1.5 border rounded">
+                                    </div>
+                                </div>
+                                <div class="grid grid-cols-2 gap-2 pt-2">
+                                    <button onclick
