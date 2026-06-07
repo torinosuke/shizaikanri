@@ -53,15 +53,28 @@
             const alertListElement = document.getElementById("alert-list");
 
             // supabase から db に変更
-            const { data: stocks, error } = await db
-                .from('shizai_stocks')
-                .select('*')
-                .order('id', { ascending: true });
+            //const { data: stocks, error } = await db
+            //    .from('shizai_stocks')
+            //    .select('*')
+            //    .order('id', { ascending: true });
 
-            if (error) {
-                stockListElement.innerHTML = `<p class="text-red-500 text-center">エラーが発生しました: ${error.message}</p>`;
-                return;
-            }
+            //if (error) {
+            //    stockListElement.innerHTML = `<p class="text-red-500 text-center">エラーが発生しました: ${error.message}</p>`;
+            //    return;
+            //}
+
+            // データ取得関数（インターネット通信をせず、強制的に画面を表示するテスト版）
+            async function fetchStocks() {
+            const stockListElement = document.getElementById("stock-list");
+            const alertSection = document.getElementById("alert-section");
+            const alertListElement = document.getElementById("alert-list");
+
+            // Supabaseを通さず、ダミーデータを直接代入
+            const error = null;
+            const stocks = [
+                { id: 1, drug_name: "テスト薬品A", shizai_name: "患者用冊子", current_stock: 1, min_stock: 3, is_ordering: false },
+                { id: 2, drug_name: "テスト薬品B", shizai_name: "保冷バッグ", current_stock: 5, min_stock: 2, is_ordering: false }
+            ];
 
             stockListElement.innerHTML = "";
             alertListElement.innerHTML = "";
