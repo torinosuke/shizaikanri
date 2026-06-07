@@ -40,8 +40,9 @@
         const SUPABASE_URL = "https://kkxpqxaxthrcxdvrmbty.supabase.co";
         const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtreHBxeGF4dGhyY3hkdnJtYnR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3NzMzODgsImV4cCI6MjA5NjM0OTM4OH0.Ptcn2lYMqbn4L5g1sV7r6E372cxfIyhsxgAkH7a65aU";
         
-        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
+        // 左側の変数名を「db」に変更します（supabase.jsの公式な作法に合わせます）
+        const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        
         // 起動時にデータを取得
         document.addEventListener("DOMContentLoaded", fetchStocks);
 
