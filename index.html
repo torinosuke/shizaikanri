@@ -7,22 +7,56 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
-<body class="bg-gray-100 min-h-screen text-gray-800">
+<body class="bg-gray-100 min-h-screen text-gray-800 font-sans pb-12">
 
     <header class="bg-blue-600 text-white p-4 sticky top-0 z-50 shadow-md">
-        <div class="container mx-auto flex justify-between items-center">
+        <div class="container mx-auto flex justify-between items-center max-w-md">
             <h1 class="text-xl font-bold">リウマチ資材管理</h1>
-            <button onclick="fetchStocks()" class="bg-blue-700 hover:bg-blue-800 px-3 py-1 rounded text-sm transition">
-                🔄 更新
-            </button>
+            <div class="flex space-x-2">
+                <button onclick="toggleAddForm()" class="bg-blue-500 hover:bg-blue-400 px-3 py-1 rounded text-sm font-bold transition">
+                    ➕ 資材追加
+                </button>
+                <button onclick="fetchStocks()" class="bg-blue-700 hover:bg-blue-800 px-3 py-1 rounded text-sm transition">
+                    🔄 更新
+                </button>
+            </div>
         </div>
     </header>
 
     <main class="container mx-auto p-4 max-w-md">
         
         <div id="error-message" class="mb-4 bg-orange-100 border-l-4 border-orange-500 text-orange-700 p-3 rounded text-sm hidden">
-            <strong>⚠️ 接続エラーが発生しました:</strong>
-            <p id="error-text" class="mt-1"></p>
+            <strong>⚠️ 接続エラー:</strong> <p id="error-text" class="mt-1"></p>
+        </div>
+
+        <div id="add-form-section" class="mb-6 bg-white p-4 rounded-xl shadow-md border border-blue-200 hidden">
+            <h2 class="text-blue-700 font-bold text-base mb-3 flex justify-between items-center">
+                <span>新しく資材を登録する</span>
+                <button onclick="toggleAddForm()" class="text-gray-400 text-sm font-normal">閉じる</button>
+            </h2>
+            <div class="space-y-3 text-sm">
+                <div>
+                    <label class="block text-gray-600 font-medium mb-1">対象薬品名</label>
+                    <input type="text" id="input-drug" placeholder="例：〇〇皮下注" class="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-400 outline-none">
+                </div>
+                <div>
+                    <label class="block text-gray-600 font-medium mb-1">資材名称</label>
+                    <input type="text" id="input-shizai" placeholder="例：患者用説明資材、保冷バッグ" class="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-400 outline-none">
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-gray-600 font-medium mb-1">初期在庫数</label>
+                        <input type="number" id="input-current" value="0" min="0" class="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-400 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-gray-600 font-medium mb-1">最低在庫数</label>
+                        <input type="number" id="input-min" value="2" min="0" class="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-400 outline-none">
+                    </div>
+                </div>
+                <button onclick="addNewShizai()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-lg transition mt-2">
+                    データベースに登録
+                </button>
+            </div>
         </div>
 
         <div id="alert-section" class="mb-4 hidden">
@@ -34,28 +68,58 @@
 
         <h2 class="font-bold text-lg mb-3 text-gray-700">資材一覧</h2>
         <div id="stock-list" class="space-y-3">
-            <p class="text-center text-gray-500 py-8">データベースから読み込み中...</p>
+            <p class="text-center text-gray-500 py-8">データを読み込み中...</p>
         </div>
     </main>
 
     <script>
         // ==========================================
-        // 🛠️ Supabaseの設定（★ここに貼ってください）
+        // 🛠️ Supabaseの設定（ご自身のものに書き換えてください）
         // ==========================================
         const SUPABASE_URL = "https://kkxpqxaxthrcxdvrmbty.supabase.co";
         const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtreHBxeGF4dGhyY3hkdnJtYnR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3NzMzODgsImV4cCI6MjA5NjM0OTM4OH0.Ptcn2lYMqbn4L5g1sV7r6E372cxfIyhsxgAkH7a65aU";
         
         let db;
-        try {
-            db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-        } catch (e) {
-            console.error(e);
-        }
+        try { db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY); } catch (e) { console.error(e); }
 
-        // 起動時にデータを取得
         document.addEventListener("DOMContentLoaded", fetchStocks);
 
-        // データ取得関数
+        // 資材登録フォームの開閉
+        function toggleAddForm() {
+            const form = document.getElementById("add-form-section");
+            form.classList.toggle("hidden");
+        }
+
+        // 提案1：新しい資材をSupabaseに挿入する関数
+        async function addNewShizai() {
+            const drug = document.getElementById("input-drug").value.trim();
+            const shizai = document.getElementById("input-shizai").value.trim();
+            const current = parseInt(document.getElementById("input-current").value) || 0;
+            const min = parseInt(document.getElementById("input-min").value) || 0;
+
+            if (!drug || !shizai) {
+                alert("薬品名と資材名称は必ず入力してください。");
+                return;
+            }
+
+            const { error } = await db
+                .from('shizai_stocks')
+                .insert([{ drug_name: drug, shizai_name: shizai, current_stock: current, min_stock: min, is_ordering: false }]);
+
+            if (error) {
+                alert("登録エラー: " + error.message);
+            } else {
+                alert("新しく資材を登録しました！");
+                // 入力欄をリセット
+                document.getElementById("input-drug").value = "";
+                document.getElementById("input-shizai").value = "";
+                document.getElementById("input-current").value = "0";
+                toggleAddForm();
+                fetchStocks(); // 一覧を再読み込み
+            }
+        }
+
+        // データ取得・一覧描画関数
         async function fetchStocks() {
             const stockListElement = document.getElementById("stock-list");
             const alertSection = document.getElementById("alert-section");
@@ -65,13 +129,6 @@
 
             errorArea.classList.add("hidden");
 
-            if (!SUPABASE_URL || SUPABASE_URL.includes("YOUR_")) {
-                stockListElement.innerHTML = "";
-                errorText.innerText = "URLとAPIキーが初期状態のままです。ご自身のSupabaseのキーに書き換えてください。";
-                errorArea.classList.remove("hidden");
-                return;
-            }
-
             try {
                 const { data: stocks, error } = await db
                     .from('shizai_stocks')
@@ -80,28 +137,16 @@
 
                 if (error) {
                     stockListElement.innerHTML = "";
-                    errorText.innerText = `${error.message} (コード: ${error.code})\nテーブル名やアクセス権限を確認してください。`;
+                    errorText.innerText = error.message;
                     errorArea.classList.remove("hidden");
                     return;
                 }
 
-                //if (!stocks || stocks.length === 0) {
-                //    stockListElement.innerHTML = `<p class="text-center text-gray-500 py-8">接続は成功しましたが、テーブルにデータが1件もありません。Supabase側でデータを追加してください。</p>`;
-                //    return;
-                //}
-
                 if (!stocks || stocks.length === 0) {
-                    stockListElement.innerHTML = `
-                        <p class="text-center text-gray-500 py-4">データが0件です。</p>
-                        <div class="bg-gray-800 text-green-400 p-3 rounded text-xs font-mono">
-                            [デバッグ情報]<br>
-                            受け取ったデータ: ${JSON.stringify(stocks)}<br>
-                            型: ${typeof stocks}
-                        </div>`;
+                    stockListElement.innerHTML = `<p class="text-center text-gray-500 py-8">資材が登録されていません。右上の「➕資材追加」から登録してください。</p>`;
                     return;
                 }
-                
-                // 表示のクリア
+
                 stockListElement.innerHTML = "";
                 alertListElement.innerHTML = "";
                 let hasAlert = false;
@@ -145,43 +190,54 @@
                                 <div>最低在庫: <span class="font-medium">${item.min_stock}</span> 個</div>
                             </div>
 
-                            <div class="grid grid-cols-2 gap-2">
-                                <button onclick="updateStock(${item.id}, ${item.current_stock - 1})" 
-                                    class="bg-gray-800 hover:bg-gray-900 text-white text-xs font-bold py-2 px-3 rounded-lg active:scale-95 transition"
-                                    ${item.current_stock <= 0 ? 'disabled class="opacity-50"' : ''}>
-                                    払出 (-1)
-                                </button>
-                                
+                            <div class="space-y-2">
+                                <div class="grid grid-cols-2 gap-2">
+                                    <button onclick="updateStock(${item.id}, ${item.current_stock - 1})" 
+                                        class="bg-gray-800 hover:bg-gray-900 text-white text-xs font-bold py-2 px-3 rounded-lg active:scale-95 transition"
+                                        ${item.current_stock <= 0 ? 'disabled class="opacity-50"' : ''}>
+                                        払出 (-1)
+                                    </button>
+                                    
+                                    ${item.is_ordering ? `
+                                        <button onclick="toggleOrderStatus(${item.id}, true)" 
+                                            class="bg-gray-400 text-white text-xs font-bold py-2 px-3 rounded-lg transition">
+                                            取り寄せを取消
+                                        </button>
+                                    ` : `
+                                        <button onclick="toggleOrderStatus(${item.id}, false)" 
+                                            class="bg-yellow-500 hover:bg-yellow-600 text-white text-xs font-bold py-2 px-3 rounded-lg active:scale-95 transition">
+                                            取り寄せ中に変更
+                                        </button>
+                                    `}
+                                </div>
+
                                 ${item.is_ordering ? `
-                                    <button onclick="toggleOrder(${item.id}, false)" 
-                                        class="bg-green-600 hover:bg-green-700 text-white text-xs font-bold py-2 px-3 rounded-lg active:scale-95 transition">
-                                        入荷完了 (在庫+5)
-                                    </button>
-                                ` : `
-                                    <button onclick="toggleOrder(${item.id}, true)" 
-                                        class="bg-yellow-500 hover:bg-yellow-600 text-white text-xs font-bold py-2 px-3 rounded-lg active:scale-95 transition">
-                                        取り寄せ中に変更
-                                    </button>
-                                `}
+                                    <div class="flex items-center space-x-2 pt-1 border-t border-dashed border-gray-200">
+                                        <input type="number" id="arrival-count-${item.id}" value="5" min="1" 
+                                            class="w-16 p-1 text-center text-sm border rounded focus:ring-2 focus:ring-green-400 outline-none font-bold">
+                                        <span class="text-xs text-gray-500">個が</span>
+                                        <button onclick="executeArrival(${item.id}, ${item.current_stock})" 
+                                            class="flex-1 bg-green-600 hover:bg-green-700 text-white text-xs font-bold py-1.5 px-2 rounded-lg transition shadow-sm">
+                                            入荷完了
+                                        </button>
+                                    </div>
+                                ` : ''}
                             </div>
                         </div>
                     `;
                     stockListElement.innerHTML += cardHtml;
                 });
 
-                if (hasAlert) {
-                    alertSection.classList.remove("hidden");
-                } else {
-                    alertSection.classList.add("hidden");
-                }
+                if (hasAlert) { alertSection.classList.remove("hidden"); } else { alertSection.classList.add("hidden"); }
 
             } catch (e) {
                 stockListElement.innerHTML = "";
-                errorText.innerText = "重大な通信エラー: " + e.message;
+                errorText.innerText = "通信エラー: " + e.message;
                 errorArea.classList.remove("hidden");
             }
         }
 
+        // 払出ボタン用の在庫数更新
         async function updateStock(id, newStock) {
             if (newStock < 0) return;
             const { error } = await db
@@ -193,20 +249,36 @@
             else fetchStocks();
         }
 
-        async function toggleOrder(id, isOrdering) {
-            let updateData = { is_ordering: isOrdering };
-            
-            if (!isOrdering) {
-                const { data } = await db.from('shizai_stocks').select('current_stock').eq('id', id).single();
-                updateData.current_stock = data.current_stock + 5;
-            }
-
+        // 取り寄せ中ステータスの切り替え（純粋にフラグだけを反転）
+        async function toggleOrderStatus(id, currentOrderingStatus) {
             const { error } = await db
                 .from('shizai_stocks')
-                .update(updateData)
+                .update({ is_ordering: !currentOrderingStatus })
                 .eq('id', id);
 
             if (error) alert("更新エラー: " + error.message);
+            else fetchStocks();
+        }
+
+        // 提案2：自由な入力値に基づいて入荷処理を実行する関数
+        async function executeArrival(id, currentStock) {
+            const inputElement = document.getElementById(`arrival-count-${id}`);
+            const arrivalCount = parseInt(inputElement.value) || 0;
+
+            if (arrivalCount <= 0) {
+                alert("1以上の数字を入力してください。");
+                return;
+            }
+
+            const newStock = currentStock + arrivalCount;
+
+            // 在庫数を増やし、同時に取り寄せ中フラグ(is_ordering)を解除する
+            const { error } = await db
+                .from('shizai_stocks')
+                .update({ current_stock: newStock, is_ordering: false })
+                .eq('id', id);
+
+            if (error) alert("入荷処理エラー: " + error.message);
             else fetchStocks();
         }
     </script>
