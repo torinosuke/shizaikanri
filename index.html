@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>抗リウマチ薬 資材在庫管理</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body class="bg-gray-100 min-h-screen text-gray-800 font-sans pb-12">
 
@@ -12,10 +13,10 @@
         <div class="container mx-auto flex justify-between items-center max-w-md">
             <h1 class="text-xl font-bold">リウマチ資材管理</h1>
             <div class="flex space-x-2">
-                <button id="btn-toggle-add" class="bg-blue-500 hover:bg-blue-400 px-3 py-1 rounded text-sm font-bold transition">
+                <button onclick="toggleAddForm()" class="bg-blue-500 hover:bg-blue-400 px-3 py-1 rounded text-sm font-bold transition">
                     ➕ 資材追加
                 </button>
-                <button id="btn-refresh" class="bg-blue-700 hover:bg-blue-800 px-3 py-1 rounded text-sm transition">
+                <button onclick="fetchStocks()" class="bg-blue-700 hover:bg-blue-800 px-3 py-1 rounded text-sm transition">
                     🔄 更新
                 </button>
             </div>
@@ -31,13 +32,12 @@
         <div id="add-form-section" class="mb-6 bg-white p-4 rounded-xl shadow-md border border-blue-200 hidden">
             <h2 class="text-blue-700 font-bold text-base mb-3 flex justify-between items-center">
                 <span>新しく資材を登録する</span>
-                <button id="btn-close-form" class="text-gray-400 text-sm font-normal">閉じる</button>
+                <button onclick="toggleAddForm()" class="text-gray-400 text-sm font-normal">閉じる</button>
             </h2>
             <div class="space-y-3 text-sm">
                 <div>
                     <label class="block text-gray-600 font-medium mb-1">対象薬品名</label>
-                    <select id="input-drug-select" class="w-full p-2 border rounded-lg bg-gray-50 font-bold text-gray-700 outline-none"></select>
-                    <input type="text" id="input-drug-text" placeholder="例：〇〇皮下注（新しい薬品名）" class="w-full p-2 border rounded-lg outline-none mt-2 hidden">
+                    <input type="text" id="input-drug" placeholder="例：〇〇皮下注" class="w-full p-2 border rounded-lg outline-none">
                 </div>
                 <div>
                     <label class="block text-gray-600 font-medium mb-1">資材名称</label>
@@ -53,7 +53,7 @@
                         <input type="number" id="input-min" value="2" min="0" class="w-full p-2 border rounded-lg outline-none">
                     </div>
                 </div>
-                <button id="btn-submit-shizai" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-lg transition mt-2">
+                <button onclick="addNewShizai()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-lg transition mt-2">
                     データベースに登録
                 </button>
             </div>
@@ -67,7 +67,7 @@
         <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 mb-4">
             <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">表示する対象薬品を選択</label>
             <div class="relative">
-                <select id="drug-filter" class="w-full p-3 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 outline-none font-bold text-gray-700 appearance-none">
+                <select id="drug-filter" onchange="filterSelectorChanged()" class="w-full p-3 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 outline-none font-bold text-gray-700 appearance-none">
                     <option value="ALL">ーー 全ての薬品を表示 ーー</option>
                 </select>
                 <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-500">
@@ -84,81 +84,38 @@
         </div>
     </main>
 
-    <script type="module">
-        import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-
+    <script>
         // ==========================================
         // 🛠️ Supabaseの設定
         // ==========================================
         const SUPABASE_URL = "https://kkxpqxaxthrcxdvrmbty.supabase.co";
         const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtreHBxeGF4dGhyY3hkdnJtYnR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3NzMzODgsImV4cCI6MjA5NjM0OTM4OH0.Ptcn2lYMqbn4L5g1sV7r6E372cxfIyhsxgAkH7a65aU";
         
-        const db = createClient(SUPABASE_URL, SUPABASE_KEY);
+        let db;
+        try { db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY); } catch (e) { console.error(e); }
 
+        // グローバルデータ保管
         let currentStocksData = [];
         let editingId = null;
-        let selectedDrugFilter = "ALL";
+        let selectedDrugFilter = "ALL"; // 現在選択されている薬品フィルター
 
-        // HTMLが完全に読み込まれたらボタンと処理を紐付ける
-        document.addEventListener("DOMContentLoaded", () => {
-            initApp();
-        });
+        document.addEventListener("DOMContentLoaded", fetchStocks);
 
-        // 万が一、タイミングがずれた場合のためのセーフティ初期化
-        if (document.readyState === "complete" || document.readyState === "interactive") {
-            initApp();
-        }
-
-        function initApp() {
-            // 重複登録防止フラグ
-            if (window.__shizai_app_initialized) return;
-            window.__shizai_app_initialized = true;
-
-            fetchStocks();
-
-            document.getElementById("btn-toggle-add").addEventListener("click", toggleAddForm);
-            document.getElementById("btn-close-form").addEventListener("click", toggleAddForm);
-            document.getElementById("btn-refresh").addEventListener("click", fetchStocks);
-            document.getElementById("input-drug-select").addEventListener("change", toggleDrugInputMethod);
-            document.getElementById("btn-submit-shizai").addEventListener("click", addNewShizai);
-            document.getElementById("drug-filter").addEventListener("change", filterSelectorChanged);
-        }
-
+        // 資材登録フォームの開閉
         function toggleAddForm() {
             const form = document.getElementById("add-form-section");
-            if(form) form.classList.toggle("hidden");
+            form.classList.toggle("hidden");
         }
 
-        function toggleDrugInputMethod() {
-            const selectElement = document.getElementById("input-drug-select");
-            const textInputElement = document.getElementById("input-drug-text");
-            
-            if (selectElement && textInputElement) {
-                if (selectElement.value === "__NEW__") {
-                    textInputElement.classList.remove("hidden");
-                    textInputElement.focus();
-                } else {
-                    textInputElement.classList.add("hidden");
-                    textInputElement.value = "";
-                }
-            }
-        }
-
+        // 新しい資材をSupabaseに挿入
         async function addNewShizai() {
-            const selectElement = document.getElementById("input-drug-select");
-            const textInputElement = document.getElementById("input-drug-text");
-            
-            let drug = selectElement.value === "__NEW__" ? textInputElement.value.trim() : selectElement.value;
+            const drug = document.getElementById("input-drug").value.trim();
             const shizai = document.getElementById("input-shizai").value.trim();
             const current = parseInt(document.getElementById("input-current").value) || 0;
             const min = parseInt(document.getElementById("input-min").value) || 0;
 
-            if (!drug || drug === "ーー 選択してください ーー") {
-                alert("対象の薬品名を選択、または新しく入力してください。");
-                return;
-            }
-            if (!shizai) {
-                alert("資材名称は必ず入力してください。");
+            if (!drug || !shizai) {
+                alert("薬品名と資材名称は必ず入力してください。");
                 return;
             }
 
@@ -170,25 +127,28 @@
                 alert("登録エラー: " + error.message);
             } else {
                 alert("新しく資材を登録しました！");
-                textInputElement.value = "";
-                textInputElement.classList.add("hidden");
+                document.getElementById("input-drug").value = "";
                 document.getElementById("input-shizai").value = "";
                 document.getElementById("input-current").value = "0";
                 toggleAddForm();
+                
+                // 登録した薬品を自動的に選択状態にして再取得
                 selectedDrugFilter = drug; 
                 fetchStocks();
             }
         }
 
+        // コンボボックスが切り替わったときの処理
         function filterSelectorChanged() {
             selectedDrugFilter = document.getElementById("drug-filter").value;
-            renderStockList();
+            renderStockList(); // 再描画
         }
 
+        // データベースからデータを引っ張ってくる（マスター処理）
         async function fetchStocks() {
             const errorArea = document.getElementById("error-message");
             const errorText = document.getElementById("error-text");
-            if(errorArea) errorArea.classList.add("hidden");
+            errorArea.classList.add("hidden");
 
             try {
                 const { data: stocks, error } = await db
@@ -197,62 +157,54 @@
                     .order('id', { ascending: true });
 
                 if (error) {
-                    if(errorText && errorArea) {
-                        errorText.innerText = error.message;
-                        errorArea.classList.remove("hidden");
-                    }
+                    errorText.innerText = error.message;
+                    errorArea.classList.remove("hidden");
                     return;
                 }
 
                 currentStocksData = stocks || [];
+                
+                // 1. 薬品選択コンボボックスの選択肢を自動生成
                 updateDrugFilterOptions();
-                updateAddFormDrugOptions();
+                
+                // 2. 画面の描画を実行
                 renderStockList();
 
             } catch (e) {
-                if(errorText && errorArea) {
-                    errorText.innerText = "通信エラー: " + e.message;
-                    errorArea.classList.remove("hidden");
-                }
+                errorText.innerText = "通信エラー: " + e.message;
+                errorArea.classList.remove("hidden");
             }
         }
 
+        // データベースの薬品名から、コンボボックスの選択肢を重複なく自動生成する関数
         function updateDrugFilterOptions() {
             const filterElement = document.getElementById("drug-filter");
-            if (!filterElement) return;
+            
+            // 現在のデータベース内にある薬品名をユニーク（重複なし）に抽出
             const drugNames = [...new Set(currentStocksData.map(item => item.drug_name))];
             
+            // 初期化（「全て表示」だけ残す）
             filterElement.innerHTML = `<option value="ALL">ーー 全ての薬品を表示 ーー</option>`;
+            
+            // 薬品の選択肢を動的に追加
             drugNames.forEach(name => {
                 const selectedAttr = (name === selectedDrugFilter) ? "selected" : "";
                 filterElement.innerHTML += `<option value="${name}" ${selectedAttr}>${name}</option>`;
             });
 
+            // もし選択していた薬品が削除などでもう存在しない場合はALLに戻す
             if (selectedDrugFilter !== "ALL" && !drugNames.includes(selectedDrugFilter)) {
                 selectedDrugFilter = "ALL";
                 filterElement.value = "ALL";
             }
         }
 
-        function updateAddFormDrugOptions() {
-            const selectElement = document.getElementById("input-drug-select");
-            if (!selectElement) return;
-            const drugNames = [...new Set(currentStocksData.map(item => item.drug_name))];
-            
-            selectElement.innerHTML = `<option value="">ーー 選択してください ーー</option>`;
-            drugNames.forEach(name => {
-                selectElement.innerHTML += `<option value="${name}">${name}</option>`;
-            });
-            selectElement.innerHTML += `<option value="__NEW__">➕ 新しい薬品を追加（直接入力）...</option>`;
-        }
-
+        // 実際に画面へカードを描画する関数（フィルター対応版）
         function renderStockList() {
             const stockListElement = document.getElementById("stock-list");
             const alertSection = document.getElementById("alert-section");
             const alertListElement = document.getElementById("alert-list");
             const listTitleElement = document.getElementById("list-title");
-
-            if(!stockListElement || !alertSection || !alertListElement || !listTitleElement) return;
 
             stockListElement.innerHTML = "";
             alertListElement.innerHTML = "";
@@ -264,14 +216,18 @@
                 return;
             }
 
-            listTitleElement.innerText = selectedDrugFilter === "ALL" ? "全資材一覧" : `「${selectedDrugFilter}」の資材一覧`;
-
-            const actionTriggers = [];
+            // タイトルの文言切り替え
+            if (selectedDrugFilter === "ALL") {
+                listTitleElement.innerText = "全資材一覧";
+            } else {
+                listTitleElement.innerText = `「${selectedDrugFilter}」の資材一覧`;
+            }
 
             currentStocksData.forEach(item => {
                 const isShortage = item.current_stock < item.min_stock;
                 const isNeedOrder = isShortage && !item.is_ordering;
 
+                // 🚨 【安全重視】要発注アラートはフィルターに関わらず「院内全体」の危機として常に一番上にリストアップする
                 if (isNeedOrder) {
                     hasAlert = true;
                     alertListElement.innerHTML += `
@@ -281,10 +237,12 @@
                     `;
                 }
 
+                // 🔍 選択された薬品フィルターに合致しないデータは、ここで描画をスキップ（非表示に）する
                 if (selectedDrugFilter !== "ALL" && item.drug_name !== selectedDrugFilter) {
                     return; 
                 }
 
+                // 編集中のカード表示
                 if (editingId === item.id) {
                     const editCardHtml = `
                         <div class="bg-blue-50 p-4 rounded-xl shadow-sm border border-blue-400 text-sm space-y-2">
@@ -308,18 +266,20 @@
                                 </div>
                             </div>
                             <div class="grid grid-cols-2 gap-2 pt-2">
-                                <button id="btn-edit-cancel-${item.id}" class="bg-gray-300 text-gray-700 font-bold py-1.5 rounded-lg">キャンセル</button>
-                                <button id="btn-edit-save-${item.id}" class="bg-blue-600 text-white font-bold py-1.5 rounded-lg">変更を保存</button>
+                                <button onclick="cancelEdit()" class="bg-gray-300 text-gray-700 font-bold py-1.5 rounded-lg">
+                                    キャンセル
+                                </button>
+                                <button onclick="saveEdit(${item.id})" class="bg-blue-600 text-white font-bold py-1.5 rounded-lg">
+                                    変更を保存
+                                </button>
                             </div>
                         </div>
                     `;
                     stockListElement.innerHTML += editCardHtml;
-                    
-                    actionTriggers.push({ id: `btn-edit-cancel-${item.id}`, type: 'cancel' });
-                    actionTriggers.push({ id: `btn-edit-save-${item.id}`, type: 'save', targetId: item.id });
                     return;
                 }
 
+                // 通常時のカード表示
                 let statusBadge = `<span class="bg-green-100 text-green-800 text-xs font-bold px-2.5 py-0.5 rounded">在庫あり</span>`;
                 let cardBorder = "border-gray-200";
 
@@ -341,8 +301,12 @@
                             <div class="flex flex-col items-end space-y-1.5">
                                 ${statusBadge}
                                 <div class="flex space-x-2 text-xs text-gray-400">
-                                    <button id="btn-mode-edit-${item.id}" class="hover:text-blue-600 p-0.5">✏️ 編集</button>
-                                    <button id="btn-action-del-${item.id}" class="hover:text-red-500 p-0.5">🗑️ 削除</button>
+                                    <button onclick="enterEditMode(${item.id})" class="hover:text-blue-600 p-0.5">
+                                        ✏️ 編集
+                                        </button>
+                                    <button onclick="deleteShizai(${item.id})" class="hover:text-red-500 p-0.5">
+                                        🗑️ 削除
+                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -354,77 +318,153 @@
 
                         <div class="space-y-2">
                             <div class="grid grid-cols-2 gap-2">
-                                <button id="btn-stock-dec-${item.id}" class="bg-gray-800 hover:bg-gray-900 text-white text-xs font-bold py-2 px-3 rounded-lg" ${item.current_stock <= 0 ? 'disabled style="opacity:0.5;"' : ''}>
+                                <button onclick="updateStock(${item.id}, ${item.current_stock - 1})" 
+                                    class="bg-gray-800 hover:bg-gray-900 text-white text-xs font-bold py-2 px-3 rounded-lg"
+                                    ${item.current_stock <= 0 ? 'disabled class="opacity-50"' : ''}>
                                     払出 (-1)
                                 </button>
-                                <button id="btn-order-toggle-${item.id}" class="${item.is_ordering ? 'bg-gray-400' : 'bg-yellow-500 hover:bg-yellow-600'} text-white text-xs font-bold py-2 px-3 rounded-lg">
-                                    ${item.is_ordering ? '取り寄せを取消' : '取り寄せ中に変更'}
-                                </button>
+                                
+                                ${item.is_ordering ? `
+                                    <button onclick="toggleOrderStatus(${item.id}, true)" 
+                                        class="bg-gray-400 text-white text-xs font-bold py-2 px-3 rounded-lg">
+                                        取り寄せを取消
+                                    </button>
+                                ` : `
+                                    <button onclick="toggleOrderStatus(${item.id}, false)" 
+                                        class="bg-yellow-500 hover:bg-yellow-600 text-white text-xs font-bold py-2 px-3 rounded-lg">
+                                        取り寄せ中に変更
+                                    </button>
+                                `}
                             </div>
+
                             ${item.is_ordering ? `
                                 <div class="flex items-center space-x-2 pt-1 border-t border-dashed border-gray-200">
-                                    <input type="number" id="arrival-count-${item.id}" value="5" min="1" class="w-16 p-1 text-center text-sm border rounded font-bold">
+                                    <input type="number" id="arrival-count-${item.id}" value="5" min="1" 
+                                        class="w-16 p-1 text-center text-sm border rounded font-bold">
                                     <span class="text-xs text-gray-500">個が</span>
-                                    <button id="btn-arrival-exec-${item.id}" class="flex-1 bg-green-600 hover:bg-green-700 text-white text-xs font-bold py-1.5 px-2 rounded-lg shadow-sm">入荷完了</button>
+                                    <button onclick="executeArrival(${item.id}, ${item.current_stock})" 
+                                        class="flex-1 bg-green-600 hover:bg-green-700 text-white text-xs font-bold py-1.5 px-2 rounded-lg shadow-sm">
+                                        入荷完了
+                                    </button>
                                 </div>
                             ` : ''}
                         </div>
                     </div>
                 `;
                 stockListElement.innerHTML += cardHtml;
-
-                actionTriggers.push({ id: `btn-mode-edit-${item.id}`, type: 'enterEdit', targetId: item.id });
-                actionTriggers.push({ id: `btn-action-del-${item.id}`, type: 'delete', targetId: item.id });
-                actionTriggers.push({ id: `btn-stock-dec-${item.id}`, type: 'dec', targetId: item.id, current: item.current_stock });
-                actionTriggers.push({ id: `btn-order-toggle-${item.id}`, type: 'toggleOrder', targetId: item.id, currentStatus: item.is_ordering });
-                if (item.is_ordering) {
-                    actionTriggers.push({ id: `btn-arrival-exec-${item.id}`, type: 'arrival', targetId: item.id, current: item.current_stock });
-                }
             });
 
-            actionTriggers.forEach(trigger => {
-                const el = document.getElementById(trigger.id);
-                if (!el) return;
-                
-                el.addEventListener("click", (e) => {
-                    e.preventDefault();
-                    if (trigger.type === 'enterEdit') enterEditMode(trigger.targetId);
-                    else if (trigger.type === 'delete') deleteShizai(trigger.targetId);
-                    else if (trigger.type === 'dec') updateStock(trigger.targetId, trigger.current - 1);
-                    else if (trigger.type === 'toggleOrder') toggleOrderStatus(trigger.targetId, trigger.currentStatus);
-                    else if (trigger.type === 'arrival') executeArrival(trigger.targetId, trigger.current);
-                    else if (trigger.type === 'cancel') cancelEdit();
-                    else if (trigger.type === 'save') saveEdit(trigger.targetId);
-                });
-            });
-
+            // アラートの表示切り替え
             if (hasAlert) { alertSection.classList.remove("hidden"); } else { alertSection.classList.add("hidden"); }
         }
 
+        // 払出用の在庫数更新
         async function updateStock(id, newStock) {
             if (newStock < 0) return;
-            const { error } = await db.from('shizai_stocks').update({ current_stock: newStock }).eq('id', id);
+            const { error } = await db
+                .from('shizai_stocks')
+                .update({ current_stock: newStock })
+                .eq('id', id);
+
             if (error) alert("更新エラー: " + error.message);
             else fetchStocks();
         }
 
+        // 取り寄せ中ステータスの切り替え
         async function toggleOrderStatus(id, currentOrderingStatus) {
-            const { error } = await db.from('shizai_stocks').update({ is_ordering: !currentOrderingStatus }).eq('id', id);
+            const { error } = await db
+                .from('shizai_stocks')
+                .update({ is_ordering: !currentOrderingStatus })
+                .eq('id', id);
+
             if (error) alert("更新エラー: " + error.message);
             else fetchStocks();
         }
 
+        // 入荷処理を実行
         async function executeArrival(id, currentStock) {
             const inputElement = document.getElementById(`arrival-count-${id}`);
             const arrivalCount = parseInt(inputElement.value) || 0;
+
             if (arrivalCount <= 0) {
                 alert("1以上の数字を入力してください。");
                 return;
             }
-            const { error } = await db.from('shizai_stocks').update({ current_stock: currentStock + arrivalCount, is_ordering: false }).eq('id', id);
+
+            const newStock = currentStock + arrivalCount;
+
+            const { error } = await db
+                .from('shizai_stocks')
+                .update({ current_stock: newStock, is_ordering: false })
+                .eq('id', id);
+
             if (error) alert("入荷処理エラー: " + error.message);
             else fetchStocks();
         }
 
+        // 資材を削除
         async function deleteShizai(id) {
-            const targetItem = currentStocksData.
+            const targetItem = currentStocksData.find(item => item.id === id);
+            const nameForConfirm = targetItem ? `${targetItem.drug_name}の${targetItem.shizai_name}` : "この資材";
+
+            const isConfirmed = confirm(`【確認】\n「${nameForConfirm}」の登録を完全に削除しますか？\n（この操作は取り消せません）`);
+            if (!isConfirmed) return;
+
+            const { error } = await db
+                .from('shizai_stocks')
+                .delete()
+                .eq('id', id);
+
+            if (error) alert("削除エラー: " + error.message);
+            else {
+                // データを再取得し、コンボボックスの選択肢も再評価する
+                fetchStocks();
+            }
+        }
+
+        // 編集モードON
+        function enterEditMode(id) {
+            editingId = id;
+            renderStockList();
+        }
+
+        // 編集キャンセル
+        function cancelEdit() {
+            editingId = null;
+            renderStockList();
+        }
+
+        // 編集内容を保存
+        async function saveEdit(id) {
+            const nextDrug = document.getElementById(`edit-drug-${id}`).value.trim();
+            const nextShizai = document.getElementById(`edit-shizai-${id}`).value.trim();
+            const nextCurrent = parseInt(document.getElementById(`edit-current-${id}`).value) || 0;
+            const nextMin = parseInt(document.getElementById(`edit-min-${id}`).value) || 0;
+
+            if (!nextDrug || !nextShizai) {
+                alert("薬品名と資材名称は空欄にできません。");
+                return;
+            }
+
+            const { error } = await db
+                .from('shizai_stocks')
+                .update({
+                    drug_name: nextDrug,
+                    shizai_name: nextShizai,
+                    current_stock: nextCurrent,
+                    min_stock: nextMin
+                })
+                .eq('id', id);
+
+            if (error) {
+                alert("修正保存エラー: " + error.message);
+            } else {
+                editingId = null;
+                // 薬品名が変わった可能性があるため、コンボボックスも含めてフル更新
+                selectedDrugFilter = nextDrug; // 編集した薬品の表示を維持
+                fetchStocks();
+            }
+        }
+    </script>
+</body>
+</html>
