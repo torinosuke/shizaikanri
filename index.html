@@ -391,4 +391,144 @@
                             <div>
                                 <p class="font-bold text-blue-800">📞 電話発注</p>
                                 <p class="mt-0.5 text-gray-700"><strong>連絡先:</strong> ${item.phone_name || '未設定'}</p>
-                                <p class="text-gray-700"><strong>TEL:</strong> <a href="tel:${item.
+                                <p class="text-gray-700"><strong>TEL:</strong> <a href="tel:${item.phone_number.trim()}" class="text-blue-600 underline font-bold">${item.phone_number.trim()}</a></p>
+                            </div>
+                        `;
+                    }
+                    orderDetailHtml += `</div>`;
+                }
+
+                const cardHtml = `
+                    <div class="bg-white p-4 rounded-xl shadow-sm border ${cardBorder}">
+                        <div class="flex justify-between items-start mb-2">
+                            <div onclick="toggleDetails(${item.id})" class="cursor-pointer flex-1 pr-2 hover:bg-gray-50 rounded transition p-1">
+                                <span class="text-xs text-gray-400 block">${item.drug_name}</span>
+                                <h3 class="font-bold text-gray-800 text-base underline decoration-dotted decoration-blue-400">${item.shizai_name}</h3>
+                                
+                                <span class="text-xs text-blue-500 block mt-0.5 font-medium">🔍 タップで発注先表示</span>
+                                
+                                <div id="detail-area-${item.id}" class="hidden mt-1" onclick="event.stopPropagation();">
+                                    ${orderDetailHtml}
+                                </div>
+                            </div>
+                            <div class="flex flex-col items-end space-y-1.5">
+                                ${statusBadge}
+                                <div class="flex space-x-2 text-xs text-gray-400">
+                                    <button onclick="enterEditMode(${item.id})" class="hover:text-blue-600 p-0.5">✏️ 編集</button>
+                                    <button onclick="deleteShizai(${item.id})" class="hover:text-red-500 p-0.5">🗑️ 削除</button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="grid grid-cols-2 gap-2 text-sm text-gray-600 mb-3 bg-gray-50 p-2 rounded">
+                            <div>現在在庫: <span class="font-bold text-lg text-gray-900">${item.current_stock}</span> 個</div>
+                            <div>最低在庫: <span class="font-medium">${item.min_stock}</span> 個</div>
+                        </div>
+
+                        <div class="space-y-2">
+                            <div class="grid grid-cols-2 gap-2">
+                                <button onclick="updateStock(${item.id}, ${item.current_stock - 1})" 
+                                    class="bg-gray-800 hover:bg-gray-900 text-white text-xs font-bold py-2 px-3 rounded-lg"
+                                    ${item.current_stock <= 0 ? 'disabled class="opacity-50"' : ''}>
+                                    払い出し (-1)
+                                </button>
+                                
+                                ${item.is_ordering ? `
+                                    <button onclick="toggleOrderStatus(${item.id}, true)" 
+                                        class="bg-gray-400 text-white text-xs font-bold py-2 px-3 rounded-lg">
+                                        取り寄せを取消
+                                    </button>
+                                ` : `
+                                    <button onclick="toggleOrderStatus(${item.id}, false)" 
+                                        class="bg-yellow-500 hover:bg-yellow-600 text-white text-xs font-bold py-2 px-3 rounded-lg">
+                                        取り寄せ中に変更
+                                    </button>
+                                `}
+                            </div>
+
+                            ${item.is_ordering ? `
+                                <div class="flex items-center space-x-2 pt-1 border-t border-dashed border-gray-200">
+                                    <input type="number" id="arrival-count-${item.id}" value="5" min="1" 
+                                        class="w-16 p-1 text-center text-sm border rounded font-bold">
+                                    <span class="text-xs text-gray-500">個が</span>
+                                    <button onclick="executeArrival(${item.id}, ${item.current_stock})" 
+                                        class="flex-1 bg-green-600 hover:bg-green-700 text-white text-xs font-bold py-1.5 px-2 rounded-lg shadow-sm">
+                                        入荷完了
+                                    </button>
+                                </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                `;
+                stockListElement.innerHTML += cardHtml;
+            });
+
+            if (hasAlert) { alertSection.classList.remove("hidden"); } else { alertSection.classList.add("hidden"); }
+        }
+
+        async function updateStock(id, newStock) {
+            if (newStock < 0) return;
+            const { error } = await db.from('shizai_stocks').update({ current_stock: newStock }).eq('id', id);
+            if (error) alert("更新エラー: " + error.message);
+            else fetchStocks();
+        }
+
+        async function toggleOrderStatus(id, currentOrderingStatus) {
+            const { error } = await db.from('shizai_stocks').update({ is_ordering: !currentOrderingStatus }).eq('id', id);
+            if (error) alert("更新エラー: " + error.message);
+            else fetchStocks();
+        }
+
+        async function executeArrival(id, currentStock) {
+            const inputElement = document.getElementById(`arrival-count-${id}`);
+            const arrivalCount = parseInt(inputElement.value) || 0;
+            if (arrivalCount <= 0) { alert("1以上の数字を入力してください。"); return; }
+            const { error } = await db.from('shizai_stocks').update({ current_stock: currentStock + arrivalCount, is_ordering: false }).eq('id', id);
+            if (error) alert("入荷処理エラー: " + error.message);
+            else fetchStocks();
+        }
+
+        async function deleteShizai(id) {
+            const targetItem = currentStocksData.find(item => item.id === id);
+            const nameForConfirm = targetItem ? `${targetItem.drug_name}の${targetItem.shizai_name}` : "この資材";
+            if (!confirm(`【確認】\n「${nameForConfirm}」の登録を完全に削除しますか？\n（この操作は取り消せません）`)) return;
+
+            const { error } = await db.from('shizai_stocks').delete().eq('id', id);
+            if (error) alert("削除エラー: " + error.message);
+            else fetchStocks();
+        }
+
+        function enterEditMode(id) { editingId = id; renderStockList(); }
+        function cancelEdit() { editingId = null; renderStockList(); }
+
+        async function saveEdit(id) {
+            const nextDrug = document.getElementById(`edit-drug-${id}`).value.trim();
+            const nextShizai = document.getElementById(`edit-shizai-${id}`).value.trim();
+            const nextCurrent = parseInt(document.getElementById(`edit-current-${id}`).value) || 0;
+            const nextMin = parseInt(document.getElementById(`edit-min-${id}`).value) || 0;
+
+            const nextOrderUrl = document.getElementById(`edit-order-url-${id}`).value.trim();
+            const nextPhoneName = document.getElementById(`edit-phone-name-${id}`).value.trim();
+            const nextPhoneNumber = document.getElementById(`edit-phone-number-${id}`).value.trim();
+
+            if (!nextDrug || !nextShizai) { alert("薬品名と資材名称は空欄にできません。"); return; }
+
+            const { error } = await db.from('shizai_stocks')
+                .update({ 
+                    drug_name: nextDrug, 
+                    shizai_name: nextShizai, 
+                    current_stock: nextCurrent, 
+                    min_stock: nextMin,
+                    order_type: 'hybrid',
+                    order_url: nextOrderUrl,
+                    phone_name: nextPhoneName,
+                    phone_number: nextPhoneNumber
+                })
+                .eq('id', id);
+                
+            if (error) alert("修正保存エラー: " + error.message);
+            else { editingId = null; selectedDrugFilter = nextDrug; fetchStocks(); }
+        }
+    </script>
+</body>
+</html>
