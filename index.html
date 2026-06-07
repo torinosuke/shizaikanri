@@ -3,17 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>抗リウマチ薬 資材在庫管理</title>
+    <title>抗リウマチ薬 資材在庫管理 (ローカルテスト版)</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body class="bg-gray-100 min-h-screen text-gray-800">
 
     <header class="bg-blue-600 text-white p-4 sticky top-0 z-50 shadow-md">
         <div class="container mx-auto flex justify-between items-center">
-            <h1 class="text-xl font-bold">リウマチ資材管理</h1>
-            <button onclick="fetchStocks()" class="bg-blue-700 hover:bg-blue-800 px-3 py-1 rounded text-sm transition">
-                🔄 更新
+            <h1 class="text-xl font-bold">リウマチ資材管理 (テスト)</h1>
+            <button onclick="resetData()" class="bg-blue-700 hover:bg-blue-800 px-3 py-1 rounded text-sm transition">
+                🔄 リセット
             </button>
         </div>
     </header>
@@ -34,47 +33,25 @@
     </main>
 
     <script>
-        // ==========================================
-        // 🛠️ Supabaseの設定（修正済）
-        // ==========================================
-        const SUPABASE_URL = "https://kkxpqxaxthrcxdvrmbty.supabase.co";
-        const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtreHBxeGF4dGhyY3hkdnJtYnR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3NzMzODgsImV4cCI6MjA5NjM0OTM4OH0.Ptcn2lYMqbn4L5g1sV7r6E372cxfIyhsxgAkH7a65aU";
-        
-        // 変数名を db に変更して衝突を回避
-        const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        // スマホのメモリ上（ローカル）だけで保持するテストデータ
+        let stocks = [
+            { id: 1, drug_name: "〇〇皮下注", shizai_name: "患者用スターターキット", current_stock: 2, min_stock: 3, is_ordering: false },
+            { id: 2, drug_name: "〇〇皮下注", shizai_name: "専用保冷バッグ（黒）", current_stock: 5, min_stock: 2, is_ordering: false },
+            { id: 3, drug_name: "△△皮下注", shizai_name: "医療廃棄物用袋", current_stock: 1, min_stock: 3, is_ordering: true }
+        ];
 
-        // 起動時にデータを取得
-        document.addEventListener("DOMContentLoaded", fetchStocks);
+        // 起動時に表示
+        document.addEventListener("DOMContentLoaded", renderInitial);
 
-        // データ取得関数
-        async function fetchStocks() {
+        function renderInitial() {
+            fetchStocks();
+        }
+
+        // 画面を描画する関数
+        function fetchStocks() {
             const stockListElement = document.getElementById("stock-list");
             const alertSection = document.getElementById("alert-section");
             const alertListElement = document.getElementById("alert-list");
-
-            // supabase から db に変更
-            //const { data: stocks, error } = await db
-            //    .from('shizai_stocks')
-            //    .select('*')
-            //    .order('id', { ascending: true });
-
-            //if (error) {
-            //    stockListElement.innerHTML = `<p class="text-red-500 text-center">エラーが発生しました: ${error.message}</p>`;
-            //    return;
-            //}
-
-            // データ取得関数（インターネット通信をせず、強制的に画面を表示するテスト版）
-            async function fetchStocks() {
-            const stockListElement = document.getElementById("stock-list");
-            const alertSection = document.getElementById("alert-section");
-            const alertListElement = document.getElementById("alert-list");
-
-            // Supabaseを通さず、ダミーデータを直接代入
-            const error = null;
-            const stocks = [
-                { id: 1, drug_name: "テスト薬品A", shizai_name: "患者用冊子", current_stock: 1, min_stock: 3, is_ordering: false },
-                { id: 2, drug_name: "テスト薬品B", shizai_name: "保冷バッグ", current_stock: 5, min_stock: 2, is_ordering: false }
-            ];
 
             stockListElement.innerHTML = "";
             alertListElement.innerHTML = "";
@@ -150,35 +127,36 @@
             }
         }
 
-        async function updateStock(id, newStock) {
+        // ボタンを押した時の在庫数更新（メモリ上）
+        function updateStock(id, newStock) {
             if (newStock < 0) return;
-            // db に変更
-            const { error } = await db
-                .from('shizai_stocks')
-                .update({ current_stock: newStock })
-                .eq('id', id);
-
-            if (error) alert("更新エラー: " + error.message);
-            else fetchStocks();
+            const target = stocks.find(item => item.id === id);
+            if (target) {
+                target.current_stock = newStock;
+                fetchStocks();
+            }
         }
 
-        async function toggleOrder(id, isOrdering) {
-            let updateData = { is_ordering: isOrdering };
-            
-            if (!isOrdering) {
-                // db に変更
-                const { data } = await db.from('shizai_stocks').select('current_stock').eq('id', id).single();
-                updateData.current_stock = data.current_stock + 5;
+        // ボタンを押した時の取り寄せステータス更新（メモリ上）
+        function toggleOrder(id, isOrdering) {
+            const target = stocks.find(item => item.id === id);
+            if (target) {
+                target.is_ordering = isOrdering;
+                if (!isOrdering) {
+                    target.current_stock += 5; // 入荷で5個追加
+                }
+                fetchStocks();
             }
+        }
 
-            // db に変更
-            const { error } = await db
-                .from('shizai_stocks')
-                .update(updateData)
-                .eq('id', id);
-
-            if (error) alert("更新エラー: " + error.message);
-            else fetchStocks();
+        // データを最初に戻す
+        function resetData() {
+            stocks = [
+                { id: 1, drug_name: "〇〇皮下注", shizai_name: "患者用スターターキット", current_stock: 2, min_stock: 3, is_ordering: false },
+                { id: 2, drug_name: "〇〇皮下注", shizai_name: "専用保冷バッグ（黒）", current_stock: 5, min_stock: 2, is_ordering: false },
+                { id: 3, drug_name: "△△皮下注", shizai_name: "医療廃棄物用袋", current_stock: 1, min_stock: 3, is_ordering: true }
+            ];
+            fetchStocks();
         }
     </script>
 </body>
