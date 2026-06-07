@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>抗リウマチ薬 資材在庫管理</title>
+    <title>抗リウマチ薬 バイオ資材在庫管理</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -11,7 +11,7 @@
 
     <header class="bg-blue-600 text-white p-4 sticky top-0 z-50 shadow-md">
         <div class="container mx-auto flex justify-between items-center max-w-md">
-            <h1 class="text-xl font-bold">リウマチ資材管理</h1>
+            <h1 class="text-xl font-bold">バイオ資材管理</h1>
             <div class="flex space-x-2">
                 <button onclick="toggleAddForm()" class="bg-blue-500 hover:bg-blue-400 px-3 py-1 rounded text-sm font-bold transition">
                     ➕ 資材追加
@@ -57,23 +57,21 @@
                 </div>
 
                 <div class="border-t pt-2 mt-2 space-y-2 bg-gray-50 p-2 rounded-lg">
-                    <label class="block text-gray-700 font-bold text-xs">📦 発注先の設定</label>
-                    <div class="flex space-x-4 text-xs">
-                        <label class="flex items-center"><input type="radio" name="input-order-type" value="online" checked onchange="toggleAddFormOrderFields()" class="mr-1"> オンライン</label>
-                        <label class="flex items-center"><input type="radio" name="input-order-type" value="phone" onchange="toggleAddFormOrderFields()" class="mr-1"> 電話発注</label>
+                    <label class="block text-gray-700 font-bold text-xs">📦 発注先の設定（ある方だけ入力、両方も可）</label>
+                    
+                    <div id="add-field-online" class="border-b pb-2 mb-2">
+                        <label class="block text-green-700 text-xs font-bold mb-0.5">💻 オンライン発注URL</label>
+                        <input type="url" id="input-order-url" placeholder="https://..." class="w-full p-1.5 border rounded bg-white">
                     </div>
-                    <div id="add-field-online">
-                        <label class="block text-gray-500 text-xs mb-0.5">発注URL</label>
-                        <input type="url" id="input-order-url" placeholder="https://..." class="w-full p-1.5 border rounded">
-                    </div>
-                    <div id="add-field-phone" class="hidden grid grid-cols-2 gap-2">
+                    
+                    <div id="add-field-phone" class="grid grid-cols-2 gap-2">
                         <div>
-                            <label class="block text-gray-500 text-xs mb-0.5">連絡先名</label>
-                            <input type="text" id="input-phone-name" placeholder="〇〇卸 担当など" class="w-full p-1.5 border rounded">
+                            <label class="block text-blue-700 text-xs font-bold mb-0.5">📞 電話連絡先名</label>
+                            <input type="text" id="input-phone-name" placeholder="〇〇卸 担当など" class="w-full p-1.5 border rounded bg-white">
                         </div>
                         <div>
-                            <label class="block text-gray-500 text-xs mb-0.5">電話番号</label>
-                            <input type="tel" id="input-phone-number" placeholder="03-XXXX-XXXX" class="w-full p-1.5 border rounded">
+                            <label class="block text-blue-700 text-xs font-bold mb-0.5">📞 電話番号</label>
+                            <input type="tel" id="input-phone-number" placeholder="03-XXXX-XXXX" class="w-full p-1.5 border rounded bg-white">
                         </div>
                     </div>
                 </div>
@@ -127,34 +125,6 @@
             form.classList.toggle("hidden");
         }
 
-        // 新規登録フォーム内の発注方法切り替え時の表示制御
-        function toggleAddFormOrderFields() {
-            const type = document.querySelector('input[name="input-order-type"]:checked').value;
-            if (type === 'online') {
-                document.getElementById("add-field-online").classList.remove("hidden");
-                document.getElementById("add-field-phone").classList.add("hidden");
-            } else {
-                document.getElementById("add-field-online").classList.add("hidden");
-                document.getElementById("add-field-phone").classList.remove("hidden");
-            }
-        }
-
-        // 編集フォーム内の発注方法切り替え時の表示制御
-        function toggleEditFormOrderFields(id) {
-            const targetInput = document.querySelector(`input[name="edit-order-type-${id}"]:checked`);
-            if (!targetInput) return; // 安全対策
-            
-            const type = targetInput.value;
-            if (type === 'online') {
-                document.getElementById(`edit-field-online-${id}`).classList.remove("hidden");
-                document.getElementById(`edit-field-phone-${id}`).classList.add("hidden");
-            } else {
-                document.getElementById(`edit-field-online-${id}`).classList.add("hidden");
-                document.getElementById(`edit-field-phone-${id}`).classList.remove("hidden");
-            }
-        }
-
-        // テキストがタップされた時に発注詳細情報を開閉するアコーディオン関数
         function toggleDetails(id) {
             const detailArea = document.getElementById(`detail-area-${id}`);
             if (detailArea) {
@@ -184,8 +154,6 @@
             const current = parseInt(document.getElementById("input-current").value) || 0;
             const min = parseInt(document.getElementById("input-min").value) || 0;
 
-            // 発注データの取得
-            const orderType = document.querySelector('input[name="input-order-type"]:checked').value;
             const orderUrl = document.getElementById("input-order-url").value.trim();
             const phoneName = document.getElementById("input-phone-name").value.trim();
             const phoneNumber = document.getElementById("input-phone-number").value.trim();
@@ -207,7 +175,7 @@
                     current_stock: current, 
                     min_stock: min, 
                     is_ordering: false,
-                    order_type: orderType,
+                    order_type: 'hybrid', // ラジオボタン廃止に伴い、内部はハイブリッド扱いに
                     order_url: orderUrl,
                     phone_name: phoneName,
                     phone_number: phoneNumber
@@ -329,9 +297,6 @@
 
                 // 編集中のカード表示
                 if (editingId === item.id) {
-                    const isOnlineChecked = (item.order_type !== 'phone') ? 'checked' : '';
-                    const isPhoneChecked = (item.order_type === 'phone') ? 'checked' : '';
-                    
                     const editCardHtml = `
                         <div class="bg-blue-50 p-4 rounded-xl shadow-sm border border-blue-400 text-sm space-y-2">
                             <div class="font-bold text-blue-800 text-xs mb-1">✏️ 登録情報を編集中</div>
@@ -354,19 +319,15 @@
                                 </div>
                             </div>
                             
-                            <div class="border-t pt-2 mt-1 space-y-1 bg-white p-2 rounded border border-blue-200">
-                                <label class="block text-gray-700 font-bold text-xs">📦 発注先変更</label>
-                                <div class="flex space-x-4 text-xs mb-1">
-                                    <label class="flex items-center"><input type="radio" name="edit-order-type-${item.id}" value="online" ${isOnlineChecked} onchange="toggleEditFormOrderFields(${item.id})" class="mr-1"> オンライン</label>
-                                    <label class="flex items-center"><input type="radio" name="edit-order-type-${item.id}" value="phone" ${isPhoneChecked} onchange="toggleEditFormOrderFields(${item.id})" class="mr-1"> 電話発注</label>
-                                </div>
-                                <div id="edit-field-online-${item.id}" class="${item.order_type === 'phone' ? 'hidden' : ''}">
-                                    <label class="block text-gray-400 text-xs mb-0.5">発注URL</label>
+                            <div class="border-t pt-2 mt-1 space-y-2 bg-white p-2 rounded border border-blue-200">
+                                <label class="block text-gray-700 font-bold text-xs">📦 発注情報の修正（両方入力可）</label>
+                                <div>
+                                    <label class="block text-gray-400 text-xs mb-0.5">オンライン発注URL</label>
                                     <input type="url" id="edit-order-url-${item.id}" value="${item.order_url || ''}" placeholder="https://..." class="w-full p-1 border rounded text-xs">
                                 </div>
-                                <div id="edit-field-phone-${item.id}" class="${item.order_type !== 'phone' ? 'hidden' : ''} grid grid-cols-2 gap-1">
+                                <div class="grid grid-cols-2 gap-1">
                                     <div>
-                                        <label class="block text-gray-400 text-xs mb-0.5">連絡先名</label>
+                                        <label class="block text-gray-400 text-xs mb-0.5">電話連絡先名</label>
                                         <input type="text" id="edit-phone-name-${item.id}" value="${item.phone_name || ''}" placeholder="〇〇卸など" class="w-full p-1 border rounded text-xs">
                                     </div>
                                     <div>
@@ -402,162 +363,32 @@
                     cardBorder = "border-red-300 bg-red-100";
                 }
 
-                // ➕ 新設：発注情報のHTML表示を生成
+                // 変更点④：オンライン、電話、両方の有無を判定してHTMLを動的に生成
                 let orderDetailHtml = "";
-                if (item.order_type === 'phone') {
+                const hasUrl = item.order_url && item.order_url.trim().startsWith('http');
+                const hasPhone = item.phone_number && item.phone_number.trim() !== "";
+
+                if (!hasUrl && !hasPhone) {
+                    // どちらも登録がない場合
                     orderDetailHtml = `
-                        <div class="mt-2 p-2 bg-blue-50 text-xs rounded-lg border border-blue-200">
-                            <p class="font-bold text-blue-800">📞 電話発注が必要な資材</p>
-                            <p class="mt-1 text-gray-700"><strong>連絡先:</strong> ${item.phone_name || '未設定'}</p>
-                            <p class="text-gray-700"><strong>TEL:</strong> <a href="tel:${item.phone_number}" class="text-blue-600 underline font-bold">${item.phone_number || '未設定'}</a></p>
+                        <div class="mt-2 p-2 bg-gray-100 text-xs rounded-lg border border-gray-300 text-gray-500 italic text-center">
+                            ⚠️ 発注先登録なし
                         </div>
                     `;
                 } else {
-                    // デフォルトまたはonlineの場合
-                    const hasUrl = item.order_url && item.order_url.startsWith('http');
-                    orderDetailHtml = `
-                        <div class="mt-2 p-2 bg-green-50 text-xs rounded-lg border border-green-200">
-                            <p class="font-bold text-green-800">💻 オンライン発注可能な資材</p>
-                            ${hasUrl ? `
-                                <p class="mt-1"><a href="${item.order_url}" target="_blank" rel="noopener noreferrer" class="text-green-700 font-bold underline flex items-center">🔗 発注ページを開く (外部リンク) ↗️</a></p>
-                            ` : `
-                                <p class="mt-1 text-gray-500 italic">発注URLが未登録です</p>
-                            `}
-                        </div>
-                    `;
-                }
-
-                const cardHtml = `
-                    <div class="bg-white p-4 rounded-xl shadow-sm border ${cardBorder}">
-                        <div class="flex justify-between items-start mb-2">
-                            <div onclick="toggleDetails(${item.id})" class="cursor-pointer flex-1 pr-2 hover:bg-gray-50 rounded transition p-1">
-                                <span class="text-xs text-gray-400 block">${item.drug_name} 🔍 タップで発注先表示</span>
-                                <h3 class="font-bold text-gray-800 text-base underline decoration-dotted decoration-blue-400">${item.shizai_name}</h3>
-                                
-                                <div id="detail-area-${item.id}" class="hidden" onclick="event.stopPropagation();">
-                                    ${orderDetailHtml}
-                                </div>
+                    orderDetailHtml = `<div class="mt-2 p-2 bg-blue-50 text-xs rounded-lg border border-blue-200 space-y-2">`;
+                    
+                    if (hasUrl) {
+                        orderDetailHtml += `
+                            <div class="pb-1 ${hasPhone ? 'border-b border-dashed border-blue-200' : ''}">
+                                <p class="font-bold text-green-800">💻 オンライン発注</p>
+                                <p class="mt-0.5"><a href="${item.order_url.trim()}" target="_blank" rel="noopener noreferrer" class="text-green-700 font-bold underline flex items-center">🔗 発注ページを開く ↗️</a></p>
                             </div>
-                            <div class="flex flex-col items-end space-y-1.5">
-                                ${statusBadge}
-                                <div class="flex space-x-2 text-xs text-gray-400">
-                                    <button onclick="enterEditMode(${item.id})" class="hover:text-blue-600 p-0.5">✏️ 編集</button>
-                                    <button onclick="deleteShizai(${item.id})" class="hover:text-red-500 p-0.5">🗑️ 削除</button>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="grid grid-cols-2 gap-2 text-sm text-gray-600 mb-3 bg-gray-50 p-2 rounded">
-                            <div>現在在庫: <span class="font-bold text-lg text-gray-900">${item.current_stock}</span> 個</div>
-                            <div>最低在庫: <span class="font-medium">${item.min_stock}</span> 個</div>
-                        </div>
-
-                        <div class="space-y-2">
-                            <div class="grid grid-cols-2 gap-2">
-                                <button onclick="updateStock(${item.id}, ${item.current_stock - 1})" 
-                                    class="bg-gray-800 hover:bg-gray-900 text-white text-xs font-bold py-2 px-3 rounded-lg"
-                                    ${item.current_stock <= 0 ? 'disabled class="opacity-50"' : ''}>
-                                    払い出し (-1)
-                                </button>
-                                
-                                ${item.is_ordering ? `
-                                    <button onclick="toggleOrderStatus(${item.id}, true)" 
-                                        class="bg-gray-400 text-white text-xs font-bold py-2 px-3 rounded-lg">
-                                        取り寄せを取消
-                                    </button>
-                                ` : `
-                                    <button onclick="toggleOrderStatus(${item.id}, false)" 
-                                        class="bg-yellow-500 hover:bg-yellow-600 text-white text-xs font-bold py-2 px-3 rounded-lg">
-                                        取り寄せ中に変更
-                                    </button>
-                                `}
-                            </div>
-
-                            ${item.is_ordering ? `
-                                <div class="flex items-center space-x-2 pt-1 border-t border-dashed border-gray-200">
-                                    <input type="number" id="arrival-count-${item.id}" value="5" min="1" 
-                                        class="w-16 p-1 text-center text-sm border rounded font-bold">
-                                    <span class="text-xs text-gray-500">個が</span>
-                                    <button onclick="executeArrival(${item.id}, ${item.current_stock})" 
-                                        class="flex-1 bg-green-600 hover:bg-green-700 text-white text-xs font-bold py-1.5 px-2 rounded-lg shadow-sm">
-                                        入荷完了
-                                    </button>
-                                </div>
-                            ` : ''}
-                        </div>
-                    </div>
-                `;
-                stockListElement.innerHTML += cardHtml;
-            });
-
-            if (hasAlert) { alertSection.classList.remove("hidden"); } else { alertSection.classList.add("hidden"); }
-        }
-
-        async function updateStock(id, newStock) {
-            if (newStock < 0) return;
-            const { error } = await db.from('shizai_stocks').update({ current_stock: newStock }).eq('id', id);
-            if (error) alert("更新エラー: " + error.message);
-            else fetchStocks();
-        }
-
-        async function toggleOrderStatus(id, currentOrderingStatus) {
-            const { error } = await db.from('shizai_stocks').update({ is_ordering: !currentOrderingStatus }).eq('id', id);
-            if (error) alert("更新エラー: " + error.message);
-            else fetchStocks();
-        }
-
-        async function executeArrival(id, currentStock) {
-            const inputElement = document.getElementById(`arrival-count-${id}`);
-            const arrivalCount = parseInt(inputElement.value) || 0;
-            if (arrivalCount <= 0) { alert("1以上の数字を入力してください。"); return; }
-            const { error } = await db.from('shizai_stocks').update({ current_stock: currentStock + arrivalCount, is_ordering: false }).eq('id', id);
-            if (error) alert("入荷処理エラー: " + error.message);
-            else fetchStocks();
-        }
-
-        async function deleteShizai(id) {
-            const targetItem = currentStocksData.find(item => item.id === id);
-            const nameForConfirm = targetItem ? `${targetItem.drug_name}の${targetItem.shizai_name}` : "この資材";
-            if (!confirm(`【確認】\n「${nameForConfirm}」の登録を完全に削除しますか？\n（この操作は取り消せません）`)) return;
-
-            const { error } = await db.from('shizai_stocks').delete().eq('id', id);
-            if (error) alert("削除エラー: " + error.message);
-            else fetchStocks();
-        }
-
-        function enterEditMode(id) { editingId = id; renderStockList(); }
-        function cancelEdit() { editingId = null; renderStockList(); }
-
-        // 編集内容の保存（追加カラムに対応）
-        async function saveEdit(id) {
-            const nextDrug = document.getElementById(`edit-drug-${id}`).value.trim();
-            const nextShizai = document.getElementById(`edit-shizai-${id}`).value.trim();
-            const nextCurrent = parseInt(document.getElementById(`edit-current-${id}`).value) || 0;
-            const nextMin = parseInt(document.getElementById(`edit-min-${id}`).value) || 0;
-
-            const nextOrderType = document.querySelector(`input[name="edit-order-type-${id}"]:checked`).value;
-            const nextOrderUrl = document.getElementById(`edit-order-url-${id}`).value.trim();
-            const nextPhoneName = document.getElementById(`edit-phone-name-${id}`).value.trim();
-            const nextPhoneNumber = document.getElementById(`edit-phone-number-${id}`).value.trim();
-
-            if (!nextDrug || !nextShizai) { alert("薬品名と資材名称は空欄にできません。"); return; }
-
-            const { error } = await db.from('shizai_stocks')
-                .update({ 
-                    drug_name: nextDrug, 
-                    shizai_name: nextShizai, 
-                    current_stock: nextCurrent, 
-                    min_stock: nextMin,
-                    order_type: nextOrderType,
-                    order_url: nextOrderUrl,
-                    phone_name: nextPhoneName,
-                    phone_number: nextPhoneNumber
-                })
-                .eq('id', id);
-                
-            if (error) alert("修正保存エラー: " + error.message);
-            else { editingId = null; selectedDrugFilter = nextDrug; fetchStocks(); }
-        }
-    </script>
-</body>
-</html>
+                        `;
+                    }
+                    if (hasPhone) {
+                        orderDetailHtml += `
+                            <div>
+                                <p class="font-bold text-blue-800">📞 電話発注</p>
+                                <p class="mt-0.5 text-gray-700"><strong>連絡先:</strong> ${item.phone_name || '未設定'}</p>
+                                <p class="text-gray-700"><strong>TEL:</strong> <a href="tel:${item.
