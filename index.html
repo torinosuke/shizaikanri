@@ -156,7 +156,8 @@
                 let hasAlert = false;
 
                 stocks.forEach(item => {
-                    const isShortage = item.current_stock <= item.min_stock;
+                    // 🛠️【修正】「以下(<=)」から「未満(<)」に変更し、最低在庫を下回った（割った）ときだけ不足と判定します
+                    const isShortage = item.current_stock < item.min_stock;
                     const isNeedOrder = isShortage && !item.is_ordering;
 
                     if (isNeedOrder) {
