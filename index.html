@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>抗リウマチ薬 資材在庫管理</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/supabase/2.39.8/supabase.umd.js"></script>
 </head>
 <body class="bg-gray-100 min-h-screen text-gray-800 font-sans pb-12">
 
@@ -85,52 +84,45 @@
         </div>
     </main>
 
-    <script>
+    <script type="module">
+        import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
         // ==========================================
         // 🛠️ Supabaseの設定
         // ==========================================
         const SUPABASE_URL = "https://kkxpqxaxthrcxdvrmbty.supabase.co";
         const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtreHBxeGF4dGhyY3hkdnJtYnR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3NzMzODgsImV4cCI6MjA5NjM0OTM4OH0.Ptcn2lYMqbn4L5g1sV7r6E372cxfIyhsxgAkH7a65aU";
         
-        let db;
+        const db = createClient(SUPABASE_URL, SUPABASE_KEY);
 
         let currentStocksData = [];
         let editingId = null;
         let selectedDrugFilter = "ALL";
 
-        // ライブラリの読み込み完了とHTMLの準備を待ってから初期化・結合
+        // HTMLが完全に読み込まれたらボタンと処理を紐付ける
         document.addEventListener("DOMContentLoaded", () => {
-            // 🛠️【修正】cdnjs版ライブラリの正しい初期化方法（頭文字を大文字のSupabaseに）修正しました
-            try {
-                if (typeof Supabase !== 'undefined') {
-                    db = Supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-                } else if (typeof supabase !== 'undefined') {
-                    db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-                } else {
-                    throw new Error("Supabaseライブラリの読み込みに失敗しています。");
-                }
-            } catch (e) {
-                console.error("初期化エラー:", e);
-                const errorArea = document.getElementById("error-message");
-                const errorText = document.getElementById("error-text");
-                if (errorArea && errorText) {
-                    errorText.innerText = "システムの初期化に失敗しました。URLやKEYの記述を確認してください。";
-                    errorArea.classList.remove("hidden");
-                }
-                return;
-            }
+            initApp();
+        });
 
-            // データの初回取得
+        // 万が一、タイミングがずれた場合のためのセーフティ初期化
+        if (document.readyState === "complete" || document.readyState === "interactive") {
+            initApp();
+        }
+
+        function initApp() {
+            // 重複登録防止フラグ
+            if (window.__shizai_app_initialized) return;
+            window.__shizai_app_initialized = true;
+
             fetchStocks();
 
-            // イベントリスナーの一括設定
             document.getElementById("btn-toggle-add").addEventListener("click", toggleAddForm);
             document.getElementById("btn-close-form").addEventListener("click", toggleAddForm);
             document.getElementById("btn-refresh").addEventListener("click", fetchStocks);
             document.getElementById("input-drug-select").addEventListener("change", toggleDrugInputMethod);
             document.getElementById("btn-submit-shizai").addEventListener("click", addNewShizai);
             document.getElementById("drug-filter").addEventListener("change", filterSelectorChanged);
-        });
+        }
 
         function toggleAddForm() {
             const form = document.getElementById("add-form-section");
@@ -197,9 +189,6 @@
             const errorArea = document.getElementById("error-message");
             const errorText = document.getElementById("error-text");
             if(errorArea) errorArea.classList.add("hidden");
-
-            // dbオブジェクトが未定義の場合は処理を中断
-            if (!db) return;
 
             try {
                 const { data: stocks, error } = await db
@@ -296,7 +285,6 @@
                     return; 
                 }
 
-                // 編集モード表示
                 if (editingId === item.id) {
                     const editCardHtml = `
                         <div class="bg-blue-50 p-4 rounded-xl shadow-sm border border-blue-400 text-sm space-y-2">
@@ -316,4 +304,127 @@
                                 </div>
                                 <div>
                                     <label class="block text-xs text-gray-500 mb-0.5">最低在庫</label>
-                                    <input type="number" id="edit
+                                    <input type="number" id="edit-min-${item.id}" value="${item.min_stock}" min="0" class="w-full p-1.5 border rounded">
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-2 pt-2">
+                                <button id="btn-edit-cancel-${item.id}" class="bg-gray-300 text-gray-700 font-bold py-1.5 rounded-lg">キャンセル</button>
+                                <button id="btn-edit-save-${item.id}" class="bg-blue-600 text-white font-bold py-1.5 rounded-lg">変更を保存</button>
+                            </div>
+                        </div>
+                    `;
+                    stockListElement.innerHTML += editCardHtml;
+                    
+                    actionTriggers.push({ id: `btn-edit-cancel-${item.id}`, type: 'cancel' });
+                    actionTriggers.push({ id: `btn-edit-save-${item.id}`, type: 'save', targetId: item.id });
+                    return;
+                }
+
+                let statusBadge = `<span class="bg-green-100 text-green-800 text-xs font-bold px-2.5 py-0.5 rounded">在庫あり</span>`;
+                let cardBorder = "border-gray-200";
+
+                if (item.is_ordering) {
+                    statusBadge = `<span class="bg-yellow-100 text-yellow-800 text-xs font-bold px-2.5 py-0.5 rounded">🟡 取り寄せ中</span>`;
+                    cardBorder = "border-yellow-300 bg-yellow-100";
+                } else if (isShortage) {
+                    statusBadge = `<span class="bg-red-100 text-red-800 text-xs font-bold px-2.5 py-0.5 rounded">🔴 要発注</span>`;
+                    cardBorder = "border-red-300 bg-red-100";
+                }
+
+                const cardHtml = `
+                    <div class="bg-white p-4 rounded-xl shadow-sm border ${cardBorder}">
+                        <div class="flex justify-between items-start mb-2">
+                            <div>
+                                <span class="text-xs text-gray-500 block">${item.drug_name}</span>
+                                <h3 class="font-bold text-gray-800 text-base">${item.shizai_name}</h3>
+                            </div>
+                            <div class="flex flex-col items-end space-y-1.5">
+                                ${statusBadge}
+                                <div class="flex space-x-2 text-xs text-gray-400">
+                                    <button id="btn-mode-edit-${item.id}" class="hover:text-blue-600 p-0.5">✏️ 編集</button>
+                                    <button id="btn-action-del-${item.id}" class="hover:text-red-500 p-0.5">🗑️ 削除</button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="grid grid-cols-2 gap-2 text-sm text-gray-600 mb-3 bg-gray-50 p-2 rounded">
+                            <div>現在在庫: <span class="font-bold text-lg text-gray-900">${item.current_stock}</span> 個</div>
+                            <div>最低在庫: <span class="font-medium">${item.min_stock}</span> 個</div>
+                        </div>
+
+                        <div class="space-y-2">
+                            <div class="grid grid-cols-2 gap-2">
+                                <button id="btn-stock-dec-${item.id}" class="bg-gray-800 hover:bg-gray-900 text-white text-xs font-bold py-2 px-3 rounded-lg" ${item.current_stock <= 0 ? 'disabled style="opacity:0.5;"' : ''}>
+                                    払出 (-1)
+                                </button>
+                                <button id="btn-order-toggle-${item.id}" class="${item.is_ordering ? 'bg-gray-400' : 'bg-yellow-500 hover:bg-yellow-600'} text-white text-xs font-bold py-2 px-3 rounded-lg">
+                                    ${item.is_ordering ? '取り寄せを取消' : '取り寄せ中に変更'}
+                                </button>
+                            </div>
+                            ${item.is_ordering ? `
+                                <div class="flex items-center space-x-2 pt-1 border-t border-dashed border-gray-200">
+                                    <input type="number" id="arrival-count-${item.id}" value="5" min="1" class="w-16 p-1 text-center text-sm border rounded font-bold">
+                                    <span class="text-xs text-gray-500">個が</span>
+                                    <button id="btn-arrival-exec-${item.id}" class="flex-1 bg-green-600 hover:bg-green-700 text-white text-xs font-bold py-1.5 px-2 rounded-lg shadow-sm">入荷完了</button>
+                                </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                `;
+                stockListElement.innerHTML += cardHtml;
+
+                actionTriggers.push({ id: `btn-mode-edit-${item.id}`, type: 'enterEdit', targetId: item.id });
+                actionTriggers.push({ id: `btn-action-del-${item.id}`, type: 'delete', targetId: item.id });
+                actionTriggers.push({ id: `btn-stock-dec-${item.id}`, type: 'dec', targetId: item.id, current: item.current_stock });
+                actionTriggers.push({ id: `btn-order-toggle-${item.id}`, type: 'toggleOrder', targetId: item.id, currentStatus: item.is_ordering });
+                if (item.is_ordering) {
+                    actionTriggers.push({ id: `btn-arrival-exec-${item.id}`, type: 'arrival', targetId: item.id, current: item.current_stock });
+                }
+            });
+
+            actionTriggers.forEach(trigger => {
+                const el = document.getElementById(trigger.id);
+                if (!el) return;
+                
+                el.addEventListener("click", (e) => {
+                    e.preventDefault();
+                    if (trigger.type === 'enterEdit') enterEditMode(trigger.targetId);
+                    else if (trigger.type === 'delete') deleteShizai(trigger.targetId);
+                    else if (trigger.type === 'dec') updateStock(trigger.targetId, trigger.current - 1);
+                    else if (trigger.type === 'toggleOrder') toggleOrderStatus(trigger.targetId, trigger.currentStatus);
+                    else if (trigger.type === 'arrival') executeArrival(trigger.targetId, trigger.current);
+                    else if (trigger.type === 'cancel') cancelEdit();
+                    else if (trigger.type === 'save') saveEdit(trigger.targetId);
+                });
+            });
+
+            if (hasAlert) { alertSection.classList.remove("hidden"); } else { alertSection.classList.add("hidden"); }
+        }
+
+        async function updateStock(id, newStock) {
+            if (newStock < 0) return;
+            const { error } = await db.from('shizai_stocks').update({ current_stock: newStock }).eq('id', id);
+            if (error) alert("更新エラー: " + error.message);
+            else fetchStocks();
+        }
+
+        async function toggleOrderStatus(id, currentOrderingStatus) {
+            const { error } = await db.from('shizai_stocks').update({ is_ordering: !currentOrderingStatus }).eq('id', id);
+            if (error) alert("更新エラー: " + error.message);
+            else fetchStocks();
+        }
+
+        async function executeArrival(id, currentStock) {
+            const inputElement = document.getElementById(`arrival-count-${id}`);
+            const arrivalCount = parseInt(inputElement.value) || 0;
+            if (arrivalCount <= 0) {
+                alert("1以上の数字を入力してください。");
+                return;
+            }
+            const { error } = await db.from('shizai_stocks').update({ current_stock: currentStock + arrivalCount, is_ordering: false }).eq('id', id);
+            if (error) alert("入荷処理エラー: " + error.message);
+            else fetchStocks();
+        }
+
+        async function deleteShizai(id) {
+            const targetItem = currentStocksData.
