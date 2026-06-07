@@ -60,13 +60,25 @@
         </div>
 
         <div id="alert-section" class="mb-4 hidden">
-            <h2 class="text-red-600 font-bold text-sm mb-2">⚠️ 発注が必要な資材</h2>
+            <h2 class="text-red-600 font-bold text-sm mb-2">⚠️ 発注が必要な資材（院内全体）</h2>
             <div id="alert-list" class="space-y-2"></div>
+        </div>
+
+        <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 mb-4">
+            <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">表示する対象薬品を選択</label>
+            <div class="relative">
+                <select id="drug-filter" onchange="filterSelectorChanged()" class="w-full p-3 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 outline-none font-bold text-gray-700 appearance-none">
+                    <option value="ALL">ーー 全ての薬品を表示 ーー</option>
+                </select>
+                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-500">
+                    ▼
+                </div>
+            </div>
         </div>
 
         <hr class="border-gray-300 my-4">
 
-        <h2 class="font-bold text-lg mb-3 text-gray-700">資材一覧</h2>
+        <h2 id="list-title" class="font-bold text-lg mb-3 text-gray-700">資材一覧</h2>
         <div id="stock-list" class="space-y-3">
             <p class="text-center text-gray-500 py-8">データを読み込み中...</p>
         </div>
@@ -85,6 +97,7 @@
         // グローバルデータ保管
         let currentStocksData = [];
         let editingId = null;
+        let selectedDrugFilter = "ALL"; // 現在選択されている薬品フィルター
 
         document.addEventListener("DOMContentLoaded", fetchStocks);
 
@@ -118,18 +131,23 @@
                 document.getElementById("input-shizai").value = "";
                 document.getElementById("input-current").value = "0";
                 toggleAddForm();
+                
+                // 登録した薬品を自動的に選択状態にして再取得
+                selectedDrugFilter = drug; 
                 fetchStocks();
             }
         }
 
-        // データ取得・一覧描画関数
+        // コンボボックスが切り替わったときの処理
+        function filterSelectorChanged() {
+            selectedDrugFilter = document.getElementById("drug-filter").value;
+            renderStockList(); // 再描画
+        }
+
+        // データベースからデータを引っ張ってくる（マスター処理）
         async function fetchStocks() {
-            const stockListElement = document.getElementById("stock-list");
-            const alertSection = document.getElementById("alert-section");
-            const alertListElement = document.getElementById("alert-list");
             const errorArea = document.getElementById("error-message");
             const errorText = document.getElementById("error-text");
-
             errorArea.classList.add("hidden");
 
             try {
@@ -139,155 +157,205 @@
                     .order('id', { ascending: true });
 
                 if (error) {
-                    stockListElement.innerHTML = "";
                     errorText.innerText = error.message;
                     errorArea.classList.remove("hidden");
                     return;
                 }
 
-                if (!stocks || stocks.length === 0) {
-                    stockListElement.innerHTML = `<p class="text-center text-gray-500 py-8">資材が登録されていません。右上の「➕資材追加」から登録してください。</p>`;
-                    return;
-                }
-
-                currentStocksData = stocks;
-                stockListElement.innerHTML = "";
-                alertListElement.innerHTML = "";
-                let hasAlert = false;
-
-                stocks.forEach(item => {
-                    // 🛠️【修正】「以下(<=)」から「未満(<)」に変更し、最低在庫を下回った（割った）ときだけ不足と判定します
-                    const isShortage = item.current_stock < item.min_stock;
-                    const isNeedOrder = isShortage && !item.is_ordering;
-
-                    if (isNeedOrder) {
-                        hasAlert = true;
-                        alertListElement.innerHTML += `
-                            <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-2 text-sm rounded shadow-sm">
-                                <strong>${item.drug_name}</strong>: ${item.shizai_name} (残り ${item.current_stock}個 / 最低 ${item.min_stock}個)
-                            </div>
-                        `;
-                    }
-
-                    // 編集中のカード表示
-                    if (editingId === item.id) {
-                        const editCardHtml = `
-                            <div class="bg-blue-50 p-4 rounded-xl shadow-sm border border-blue-400 text-sm space-y-2">
-                                <div class="font-bold text-blue-800 text-xs mb-1">✏️ 登録情報を編集中</div>
-                                <div>
-                                    <label class="block text-xs text-gray-500 mb-0.5">薬品名</label>
-                                    <input type="text" id="edit-drug-${item.id}" value="${item.drug_name}" class="w-full p-1.5 border rounded">
-                                </div>
-                                <div>
-                                    <label class="block text-xs text-gray-500 mb-0.5">資材名</label>
-                                    <input type="text" id="edit-shizai-${item.id}" value="${item.shizai_name}" class="w-full p-1.5 border rounded">
-                                </div>
-                                <div class="grid grid-cols-2 gap-2">
-                                    <div>
-                                        <label class="block text-xs text-gray-500 mb-0.5">現在在庫</label>
-                                        <input type="number" id="edit-current-${item.id}" value="${item.current_stock}" min="0" class="w-full p-1.5 border rounded">
-                                    </div>
-                                    <div>
-                                        <label class="block text-xs text-gray-500 mb-0.5">最低在庫</label>
-                                        <input type="number" id="edit-min-${item.id}" value="${item.min_stock}" min="0" class="w-full p-1.5 border rounded">
-                                    </div>
-                                </div>
-                                <div class="grid grid-cols-2 gap-2 pt-2">
-                                    <button onclick="cancelEdit()" class="bg-gray-300 text-gray-700 font-bold py-1.5 rounded-lg">
-                                        キャンセル
-                                    </button>
-                                    <button onclick="saveEdit(${item.id})" class="bg-blue-600 text-white font-bold py-1.5 rounded-lg">
-                                        変更を保存
-                                    </button>
-                                </div>
-                            </div>
-                        `;
-                        stockListElement.innerHTML += editCardHtml;
-                        return;
-                    }
-
-                    // 通常時のカード表示
-                    let statusBadge = `<span class="bg-green-100 text-green-800 text-xs font-bold px-2.5 py-0.5 rounded">在庫あり</span>`;
-                    let cardBorder = "border-gray-200";
-
-                    if (item.is_ordering) {
-                        statusBadge = `<span class="bg-yellow-100 text-yellow-800 text-xs font-bold px-2.5 py-0.5 rounded">🟡 取り寄せ中</span>`;
-                        cardBorder = "border-yellow-300 bg-yellow-100";
-                    } else if (isShortage) {
-                        statusBadge = `<span class="bg-red-100 text-red-800 text-xs font-bold px-2.5 py-0.5 rounded">🔴 要発注</span>`;
-                        cardBorder = "border-red-300 bg-red-100";
-                    }
-
-                    const cardHtml = `
-                        <div class="bg-white p-4 rounded-xl shadow-sm border ${cardBorder}">
-                            <div class="flex justify-between items-start mb-2">
-                                <div>
-                                    <span class="text-xs text-gray-500 block">${item.drug_name}</span>
-                                    <h3 class="font-bold text-gray-800 text-base">${item.shizai_name}</h3>
-                                </div>
-                                <div class="flex flex-col items-end space-y-1.5">
-                                    ${statusBadge}
-                                    <div class="flex space-x-2 text-xs text-gray-400">
-                                        <button onclick="enterEditMode(${item.id})" class="hover:text-blue-600 p-0.5">
-                                            ✏️ 編集
-                                        </button>
-                                        <button onclick="deleteShizai(${item.id})" class="hover:text-red-500 p-0.5">
-                                            🗑️ 削除
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div class="grid grid-cols-2 gap-2 text-sm text-gray-600 mb-3 bg-gray-50 p-2 rounded">
-                                <div>現在在庫: <span class="font-bold text-lg text-gray-900">${item.current_stock}</span> 個</div>
-                                <div>最低在庫: <span class="font-medium">${item.min_stock}</span> 個</div>
-                            </div>
-
-                            <div class="space-y-2">
-                                <div class="grid grid-cols-2 gap-2">
-                                    <button onclick="updateStock(${item.id}, ${item.current_stock - 1})" 
-                                        class="bg-gray-800 hover:bg-gray-900 text-white text-xs font-bold py-2 px-3 rounded-lg"
-                                        ${item.current_stock <= 0 ? 'disabled class="opacity-50"' : ''}>
-                                        払出 (-1)
-                                    </button>
-                                    
-                                    ${item.is_ordering ? `
-                                        <button onclick="toggleOrderStatus(${item.id}, true)" 
-                                            class="bg-gray-400 text-white text-xs font-bold py-2 px-3 rounded-lg">
-                                            取り寄せを取消
-                                        </button>
-                                    ` : `
-                                        <button onclick="toggleOrderStatus(${item.id}, false)" 
-                                            class="bg-yellow-500 hover:bg-yellow-600 text-white text-xs font-bold py-2 px-3 rounded-lg">
-                                            取り寄せ中に変更
-                                        </button>
-                                    `}
-                                </div>
-
-                                ${item.is_ordering ? `
-                                    <div class="flex items-center space-x-2 pt-1 border-t border-dashed border-gray-200">
-                                        <input type="number" id="arrival-count-${item.id}" value="5" min="1" 
-                                            class="w-16 p-1 text-center text-sm border rounded font-bold">
-                                        <span class="text-xs text-gray-500">個が</span>
-                                        <button onclick="executeArrival(${item.id}, ${item.current_stock})" 
-                                            class="flex-1 bg-green-600 hover:bg-green-700 text-white text-xs font-bold py-1.5 px-2 rounded-lg shadow-sm">
-                                            入荷完了
-                                        </button>
-                                    </div>
-                                ` : ''}
-                            </div>
-                        </div>
-                    `;
-                    stockListElement.innerHTML += cardHtml;
-                });
-
-                if (hasAlert) { alertSection.classList.remove("hidden"); } else { alertSection.classList.add("hidden"); }
+                currentStocksData = stocks || [];
+                
+                // 1. 薬品選択コンボボックスの選択肢を自動生成
+                updateDrugFilterOptions();
+                
+                // 2. 画面の描画を実行
+                renderStockList();
 
             } catch (e) {
-                stockListElement.innerHTML = "";
                 errorText.innerText = "通信エラー: " + e.message;
                 errorArea.classList.remove("hidden");
             }
+        }
+
+        // データベースの薬品名から、コンボボックスの選択肢を重複なく自動生成する関数
+        function updateDrugFilterOptions() {
+            const filterElement = document.getElementById("drug-filter");
+            
+            // 現在のデータベース内にある薬品名をユニーク（重複なし）に抽出
+            const drugNames = [...new Set(currentStocksData.map(item => item.drug_name))];
+            
+            // 初期化（「全て表示」だけ残す）
+            filterElement.innerHTML = `<option value="ALL">ーー 全ての薬品を表示 ーー</option>`;
+            
+            // 薬品の選択肢を動的に追加
+            drugNames.forEach(name => {
+                const selectedAttr = (name === selectedDrugFilter) ? "selected" : "";
+                filterElement.innerHTML += `<option value="${name}" ${selectedAttr}>${name}</option>`;
+            });
+
+            // もし選択していた薬品が削除などでもう存在しない場合はALLに戻す
+            if (selectedDrugFilter !== "ALL" && !drugNames.includes(selectedDrugFilter)) {
+                selectedDrugFilter = "ALL";
+                filterElement.value = "ALL";
+            }
+        }
+
+        // 実際に画面へカードを描画する関数（フィルター対応版）
+        function renderStockList() {
+            const stockListElement = document.getElementById("stock-list");
+            const alertSection = document.getElementById("alert-section");
+            const alertListElement = document.getElementById("alert-list");
+            const listTitleElement = document.getElementById("list-title");
+
+            stockListElement.innerHTML = "";
+            alertListElement.innerHTML = "";
+            let hasAlert = false;
+
+            if (currentStocksData.length === 0) {
+                stockListElement.innerHTML = `<p class="text-center text-gray-500 py-8">資材が登録されていません。右上の「➕資材追加」から登録してください。</p>`;
+                alertSection.classList.add("hidden");
+                return;
+            }
+
+            // タイトルの文言切り替え
+            if (selectedDrugFilter === "ALL") {
+                listTitleElement.innerText = "全資材一覧";
+            } else {
+                listTitleElement.innerText = `「${selectedDrugFilter}」の資材一覧`;
+            }
+
+            currentStocksData.forEach(item => {
+                const isShortage = item.current_stock < item.min_stock;
+                const isNeedOrder = isShortage && !item.is_ordering;
+
+                // 🚨 【安全重視】要発注アラートはフィルターに関わらず「院内全体」の危機として常に一番上にリストアップする
+                if (isNeedOrder) {
+                    hasAlert = true;
+                    alertListElement.innerHTML += `
+                        <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-2 text-sm rounded shadow-sm">
+                            <strong>${item.drug_name}</strong>: ${item.shizai_name} (残り ${item.current_stock}個 / 最低 ${item.min_stock}個)
+                        </div>
+                    `;
+                }
+
+                // 🔍 選択された薬品フィルターに合致しないデータは、ここで描画をスキップ（非表示に）する
+                if (selectedDrugFilter !== "ALL" && item.drug_name !== selectedDrugFilter) {
+                    return; 
+                }
+
+                // 編集中のカード表示
+                if (editingId === item.id) {
+                    const editCardHtml = `
+                        <div class="bg-blue-50 p-4 rounded-xl shadow-sm border border-blue-400 text-sm space-y-2">
+                            <div class="font-bold text-blue-800 text-xs mb-1">✏️ 登録情報を編集中</div>
+                            <div>
+                                <label class="block text-xs text-gray-500 mb-0.5">薬品名</label>
+                                <input type="text" id="edit-drug-${item.id}" value="${item.drug_name}" class="w-full p-1.5 border rounded">
+                            </div>
+                            <div>
+                                <label class="block text-xs text-gray-500 mb-0.5">資材名</label>
+                                <input type="text" id="edit-shizai-${item.id}" value="${item.shizai_name}" class="w-full p-1.5 border rounded">
+                            </div>
+                            <div class="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label class="block text-xs text-gray-500 mb-0.5">現在在庫</label>
+                                    <input type="number" id="edit-current-${item.id}" value="${item.current_stock}" min="0" class="w-full p-1.5 border rounded">
+                                </div>
+                                <div>
+                                    <label class="block text-xs text-gray-500 mb-0.5">最低在庫</label>
+                                    <input type="number" id="edit-min-${item.id}" value="${item.min_stock}" min="0" class="w-full p-1.5 border rounded">
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-2 pt-2">
+                                <button onclick="cancelEdit()" class="bg-gray-300 text-gray-700 font-bold py-1.5 rounded-lg">
+                                    キャンセル
+                                </button>
+                                <button onclick="saveEdit(${item.id})" class="bg-blue-600 text-white font-bold py-1.5 rounded-lg">
+                                    変更を保存
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                    stockListElement.innerHTML += editCardHtml;
+                    return;
+                }
+
+                // 通常時のカード表示
+                let statusBadge = `<span class="bg-green-100 text-green-800 text-xs font-bold px-2.5 py-0.5 rounded">在庫あり</span>`;
+                let cardBorder = "border-gray-200";
+
+                if (item.is_ordering) {
+                    statusBadge = `<span class="bg-yellow-100 text-yellow-800 text-xs font-bold px-2.5 py-0.5 rounded">🟡 取り寄せ中</span>`;
+                    cardBorder = "border-yellow-300 bg-yellow-100";
+                } else if (isShortage) {
+                    statusBadge = `<span class="bg-red-100 text-red-800 text-xs font-bold px-2.5 py-0.5 rounded">🔴 要発注</span>`;
+                    cardBorder = "border-red-300 bg-red-100";
+                }
+
+                const cardHtml = `
+                    <div class="bg-white p-4 rounded-xl shadow-sm border ${cardBorder}">
+                        <div class="flex justify-between items-start mb-2">
+                            <div>
+                                <span class="text-xs text-gray-500 block">${item.drug_name}</span>
+                                <h3 class="font-bold text-gray-800 text-base">${item.shizai_name}</h3>
+                            </div>
+                            <div class="flex flex-col items-end space-y-1.5">
+                                ${statusBadge}
+                                <div class="flex space-x-2 text-xs text-gray-400">
+                                    <button onclick="enterEditMode(${item.id})" class="hover:text-blue-600 p-0.5">
+                                        ✏️ 編集
+                                        </button>
+                                    <button onclick="deleteShizai(${item.id})" class="hover:text-red-500 p-0.5">
+                                        🗑️ 削除
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="grid grid-cols-2 gap-2 text-sm text-gray-600 mb-3 bg-gray-50 p-2 rounded">
+                            <div>現在在庫: <span class="font-bold text-lg text-gray-900">${item.current_stock}</span> 個</div>
+                            <div>最低在庫: <span class="font-medium">${item.min_stock}</span> 個</div>
+                        </div>
+
+                        <div class="space-y-2">
+                            <div class="grid grid-cols-2 gap-2">
+                                <button onclick="updateStock(${item.id}, ${item.current_stock - 1})" 
+                                    class="bg-gray-800 hover:bg-gray-900 text-white text-xs font-bold py-2 px-3 rounded-lg"
+                                    ${item.current_stock <= 0 ? 'disabled class="opacity-50"' : ''}>
+                                    払出 (-1)
+                                </button>
+                                
+                                ${item.is_ordering ? `
+                                    <button onclick="toggleOrderStatus(${item.id}, true)" 
+                                        class="bg-gray-400 text-white text-xs font-bold py-2 px-3 rounded-lg">
+                                        取り寄せを取消
+                                    </button>
+                                ` : `
+                                    <button onclick="toggleOrderStatus(${item.id}, false)" 
+                                        class="bg-yellow-500 hover:bg-yellow-600 text-white text-xs font-bold py-2 px-3 rounded-lg">
+                                        取り寄せ中に変更
+                                    </button>
+                                `}
+                            </div>
+
+                            ${item.is_ordering ? `
+                                <div class="flex items-center space-x-2 pt-1 border-t border-dashed border-gray-200">
+                                    <input type="number" id="arrival-count-${item.id}" value="5" min="1" 
+                                        class="w-16 p-1 text-center text-sm border rounded font-bold">
+                                    <span class="text-xs text-gray-500">個が</span>
+                                    <button onclick="executeArrival(${item.id}, ${item.current_stock})" 
+                                        class="flex-1 bg-green-600 hover:bg-green-700 text-white text-xs font-bold py-1.5 px-2 rounded-lg shadow-sm">
+                                        入荷完了
+                                    </button>
+                                </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                `;
+                stockListElement.innerHTML += cardHtml;
+            });
+
+            // アラートの表示切り替え
+            if (hasAlert) { alertSection.classList.remove("hidden"); } else { alertSection.classList.add("hidden"); }
         }
 
         // 払出用の在庫数更新
@@ -348,19 +416,22 @@
                 .eq('id', id);
 
             if (error) alert("削除エラー: " + error.message);
-            else fetchStocks();
+            else {
+                // データを再取得し、コンボボックスの選択肢も再評価する
+                fetchStocks();
+            }
         }
 
         // 編集モードON
         function enterEditMode(id) {
             editingId = id;
-            fetchStocks();
+            renderStockList();
         }
 
         // 編集キャンセル
         function cancelEdit() {
             editingId = null;
-            fetchStocks();
+            renderStockList();
         }
 
         // 編集内容を保存
@@ -389,6 +460,8 @@
                 alert("修正保存エラー: " + error.message);
             } else {
                 editingId = null;
+                // 薬品名が変わった可能性があるため、コンボボックスも含めてフル更新
+                selectedDrugFilter = nextDrug; // 編集した薬品の表示を維持
                 fetchStocks();
             }
         }
