@@ -35,14 +35,14 @@
 
     <script>
         // ==========================================
-        // 🛠️ Supabaseの設定（ご自身のものに書き換えてください）
+        // 🛠️ Supabaseの設定（修正済）
         // ==========================================
         const SUPABASE_URL = "https://kkxpqxaxthrcxdvrmbty.supabase.co";
         const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtreHBxeGF4dGhyY3hkdnJtYnR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3NzMzODgsImV4cCI6MjA5NjM0OTM4OH0.Ptcn2lYMqbn4L5g1sV7r6E372cxfIyhsxgAkH7a65aU";
         
-        // 左側の変数名を「db」に変更します（supabase.jsの公式な作法に合わせます）
+        // 変数名を db に変更して衝突を回避
         const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-        
+
         // 起動時にデータを取得
         document.addEventListener("DOMContentLoaded", fetchStocks);
 
@@ -52,8 +52,8 @@
             const alertSection = document.getElementById("alert-section");
             const alertListElement = document.getElementById("alert-list");
 
-            // Supabaseからデータを取得（ID順）
-            const { data: stocks, error } = await supabase
+            // supabase から db に変更
+            const { data: stocks, error } = await db
                 .from('shizai_stocks')
                 .select('*')
                 .order('id', { ascending: true });
@@ -63,17 +63,14 @@
                 return;
             }
 
-            // 表示のリセット
             stockListElement.innerHTML = "";
             alertListElement.innerHTML = "";
             let hasAlert = false;
 
             stocks.forEach(item => {
-                // 最低在庫数を下回っており、かつ取り寄せ中ではない場合「要発注」
                 const isShortage = item.current_stock <= item.min_stock;
                 const isNeedOrder = isShortage && !item.is_ordering;
 
-                // ステータスバッジの判定
                 let statusBadge = `<span class="bg-green-100 text-green-800 text-xs font-bold px-2.5 py-0.5 rounded">在庫あり</span>`;
                 let cardBorder = "border-gray-200";
 
@@ -85,7 +82,6 @@
                     cardBorder = "border-red-300 bg-red-50/50";
                 }
 
-                // アラートエリアへの追加
                 if (isNeedOrder) {
                     hasAlert = true;
                     alertListElement.innerHTML += `
@@ -95,7 +91,6 @@
                     `;
                 }
 
-                // メイン一覧用のカードHTML生成
                 const cardHtml = `
                     <div class="bg-white p-4 rounded-xl shadow-sm border ${cardBorder} transition-all">
                         <div class="flex justify-between items-start mb-2">
@@ -135,7 +130,6 @@
                 stockListElement.innerHTML += cardHtml;
             });
 
-            // アラートの表示制御
             if (hasAlert) {
                 alertSection.classList.remove("hidden");
             } else {
@@ -143,36 +137,35 @@
             }
         }
 
-        // 在庫数の更新処理
         async function updateStock(id, newStock) {
             if (newStock < 0) return;
-            const { error } = await supabase
+            // db に変更
+            const { error } = await db
                 .from('shizai_stocks')
                 .update({ current_stock: newStock })
                 .eq('id', id);
 
             if (error) alert("更新エラー: " + error.message);
-            else fetchStocks(); // 画面を再読み込み
+            else fetchStocks();
         }
 
-        // 取り寄せステータスの切り替え処理
         async function toggleOrder(id, isOrdering) {
             let updateData = { is_ordering: isOrdering };
             
-            // 「入荷完了」を押した時は、取り寄せ中を解除し、在庫を例えば5個増やす
             if (!isOrdering) {
-                // 現在の在庫を再取得して加算するのが正確ですが、簡易的に現在のカードをベースにするか、一律加算処理
-                const { data } = await supabase.from('shizai_stocks').select('current_stock').eq('id', id).single();
-                updateData.current_stock = data.current_stock + 5; // 入荷数を一律5個とした例
+                // db に変更
+                const { data } = await db.from('shizai_stocks').select('current_stock').eq('id', id).single();
+                updateData.current_stock = data.current_stock + 5;
             }
 
-            const { error } = await supabase
+            // db に変更
+            const { error } = await db
                 .from('shizai_stocks')
                 .update(updateData)
                 .eq('id', id);
 
             if (error) alert("更新エラー: " + error.message);
-            else fetchStocks(); // 画面を再読み込み
+            else fetchStocks();
         }
     </script>
 </body>
