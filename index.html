@@ -37,7 +37,10 @@
             <div class="space-y-3 text-sm">
                 <div>
                     <label class="block text-gray-600 font-medium mb-1">対象薬品名</label>
-                    <input type="text" id="input-drug" placeholder="例：〇〇皮下注" class="w-full p-2 border rounded-lg outline-none">
+                    <select id="input-drug-select" onchange="toggleDrugInputMethod()" class="w-full p-2 border rounded-lg bg-gray-50 font-bold text-gray-700 outline-none">
+                        </select>
+                    
+                    <input type="text" id="input-drug-text" placeholder="例：〇〇皮下注（新しい薬品名）" class="w-full p-2 border rounded-lg outline-none mt-2 hidden">
                 </div>
                 <div>
                     <label class="block text-gray-600 font-medium mb-1">資材名称</label>
@@ -97,7 +100,7 @@
         // グローバルデータ保管
         let currentStocksData = [];
         let editingId = null;
-        let selectedDrugFilter = "ALL"; // 現在選択されている薬品フィルター
+        let selectedDrugFilter = "ALL";
 
         document.addEventListener("DOMContentLoaded", fetchStocks);
 
@@ -107,15 +110,43 @@
             form.classList.toggle("hidden");
         }
 
+        // 🛠️ 新機能：登録フォーム内の薬品選択方式を切り替える処理
+        function toggleDrugInputMethod() {
+            const selectElement = document.getElementById("input-drug-select");
+            const textInputElement = document.getElementById("input-drug-text");
+            
+            if (selectElement.value === "__NEW__") {
+                textInputElement.classList.remove("hidden");
+                textInputElement.focus();
+            } else {
+                textInputElement.classList.add("hidden");
+                textInputElement.value = ""; // クリア
+            }
+        }
+
         // 新しい資材をSupabaseに挿入
         async function addNewShizai() {
-            const drug = document.getElementById("input-drug").value.trim();
+            const selectElement = document.getElementById("input-drug-select");
+            const textInputElement = document.getElementById("input-drug-text");
+            
+            // 選択状態に応じて、どちらの値を薬品名として使うか決める
+            let drug = "";
+            if (selectElement.value === "__NEW__") {
+                drug = textInputElement.value.trim();
+            } else {
+                drug = selectElement.value;
+            }
+
             const shizai = document.getElementById("input-shizai").value.trim();
             const current = parseInt(document.getElementById("input-current").value) || 0;
             const min = parseInt(document.getElementById("input-min").value) || 0;
 
-            if (!drug || !shizai) {
-                alert("薬品名と資材名称は必ず入力してください。");
+            if (!drug || drug === "ーー 選択してください ーー") {
+                alert("対象の薬品名を選択、または新しく入力してください。");
+                return;
+            }
+            if (!shizai) {
+                alert("資材名称は必ず入力してください。");
                 return;
             }
 
@@ -127,12 +158,14 @@
                 alert("登録エラー: " + error.message);
             } else {
                 alert("新しく資材を登録しました！");
-                document.getElementById("input-drug").value = "";
+                
+                // フォームの初期化
+                textInputElement.value = "";
+                textInputElement.classList.add("hidden");
                 document.getElementById("input-shizai").value = "";
                 document.getElementById("input-current").value = "0";
                 toggleAddForm();
                 
-                // 登録した薬品を自動的に選択状態にして再取得
                 selectedDrugFilter = drug; 
                 fetchStocks();
             }
@@ -141,7 +174,7 @@
         // コンボボックスが切り替わったときの処理
         function filterSelectorChanged() {
             selectedDrugFilter = document.getElementById("drug-filter").value;
-            renderStockList(); // 再描画
+            renderStockList();
         }
 
         // データベースからデータを引っ張ってくる（マスター処理）
@@ -164,10 +197,13 @@
 
                 currentStocksData = stocks || [];
                 
-                // 1. 薬品選択コンボボックスの選択肢を自動生成
+                // 1. メイン画面の検索用コンボボックスを更新
                 updateDrugFilterOptions();
                 
-                // 2. 画面の描画を実行
+                // 2. 🛠️【新機能】追加フォーム側の薬品選択肢も更新
+                updateAddFormDrugOptions();
+                
+                // 3. 画面の描画を実行
                 renderStockList();
 
             } catch (e) {
@@ -176,30 +212,41 @@
             }
         }
 
-        // データベースの薬品名から、コンボボックスの選択肢を重複なく自動生成する関数
+        // メイン画面の検索用コンボボックスの選択肢を自動生成する関数
         function updateDrugFilterOptions() {
             const filterElement = document.getElementById("drug-filter");
-            
-            // 現在のデータベース内にある薬品名をユニーク（重複なし）に抽出
             const drugNames = [...new Set(currentStocksData.map(item => item.drug_name))];
             
-            // 初期化（「全て表示」だけ残す）
             filterElement.innerHTML = `<option value="ALL">ーー 全ての薬品を表示 ーー</option>`;
             
-            // 薬品の選択肢を動的に追加
             drugNames.forEach(name => {
                 const selectedAttr = (name === selectedDrugFilter) ? "selected" : "";
                 filterElement.innerHTML += `<option value="${name}" ${selectedAttr}>${name}</option>`;
             });
 
-            // もし選択していた薬品が削除などでもう存在しない場合はALLに戻す
             if (selectedDrugFilter !== "ALL" && !drugNames.includes(selectedDrugFilter)) {
                 selectedDrugFilter = "ALL";
                 filterElement.value = "ALL";
             }
         }
 
-        // 実際に画面へカードを描画する関数（フィルター対応版）
+        // 🛠️【新機能】資材追加フォーム用の薬品選択ドロップダウンを生成する関数
+        function updateAddFormDrugOptions() {
+            const selectElement = document.getElementById("input-drug-select");
+            const drugNames = [...new Set(currentStocksData.map(item => item.drug_name))];
+            
+            selectElement.innerHTML = `<option value="">ーー 選択してください ーー</option>`;
+            
+            // 既存の薬品をリストに追加
+            drugNames.forEach(name => {
+                selectElement.innerHTML += `<option value="${name}">${name}</option>`;
+            });
+            
+            // 最後に「新しい薬品を追加する」ためのトリガー項目を配置
+            selectElement.innerHTML += `<option value="__NEW__">➕ 新しい薬品を追加（直接入力）...</option>`;
+        }
+
+        // 実際に画面へカードを描画する関数
         function renderStockList() {
             const stockListElement = document.getElementById("stock-list");
             const alertSection = document.getElementById("alert-section");
@@ -216,7 +263,6 @@
                 return;
             }
 
-            // タイトルの文言切り替え
             if (selectedDrugFilter === "ALL") {
                 listTitleElement.innerText = "全資材一覧";
             } else {
@@ -227,7 +273,6 @@
                 const isShortage = item.current_stock < item.min_stock;
                 const isNeedOrder = isShortage && !item.is_ordering;
 
-                // 🚨 【安全重視】要発注アラートはフィルターに関わらず「院内全体」の危機として常に一番上にリストアップする
                 if (isNeedOrder) {
                     hasAlert = true;
                     alertListElement.innerHTML += `
@@ -237,7 +282,6 @@
                     `;
                 }
 
-                // 🔍 選択された薬品フィルターに合致しないデータは、ここで描画をスキップ（非表示に）する
                 if (selectedDrugFilter !== "ALL" && item.drug_name !== selectedDrugFilter) {
                     return; 
                 }
@@ -354,117 +398,7 @@
                 stockListElement.innerHTML += cardHtml;
             });
 
-            // アラートの表示切り替え
             if (hasAlert) { alertSection.classList.remove("hidden"); } else { alertSection.classList.add("hidden"); }
         }
 
-        // 払出用の在庫数更新
-        async function updateStock(id, newStock) {
-            if (newStock < 0) return;
-            const { error } = await db
-                .from('shizai_stocks')
-                .update({ current_stock: newStock })
-                .eq('id', id);
-
-            if (error) alert("更新エラー: " + error.message);
-            else fetchStocks();
-        }
-
-        // 取り寄せ中ステータスの切り替え
-        async function toggleOrderStatus(id, currentOrderingStatus) {
-            const { error } = await db
-                .from('shizai_stocks')
-                .update({ is_ordering: !currentOrderingStatus })
-                .eq('id', id);
-
-            if (error) alert("更新エラー: " + error.message);
-            else fetchStocks();
-        }
-
-        // 入荷処理を実行
-        async function executeArrival(id, currentStock) {
-            const inputElement = document.getElementById(`arrival-count-${id}`);
-            const arrivalCount = parseInt(inputElement.value) || 0;
-
-            if (arrivalCount <= 0) {
-                alert("1以上の数字を入力してください。");
-                return;
-            }
-
-            const newStock = currentStock + arrivalCount;
-
-            const { error } = await db
-                .from('shizai_stocks')
-                .update({ current_stock: newStock, is_ordering: false })
-                .eq('id', id);
-
-            if (error) alert("入荷処理エラー: " + error.message);
-            else fetchStocks();
-        }
-
-        // 資材を削除
-        async function deleteShizai(id) {
-            const targetItem = currentStocksData.find(item => item.id === id);
-            const nameForConfirm = targetItem ? `${targetItem.drug_name}の${targetItem.shizai_name}` : "この資材";
-
-            const isConfirmed = confirm(`【確認】\n「${nameForConfirm}」の登録を完全に削除しますか？\n（この操作は取り消せません）`);
-            if (!isConfirmed) return;
-
-            const { error } = await db
-                .from('shizai_stocks')
-                .delete()
-                .eq('id', id);
-
-            if (error) alert("削除エラー: " + error.message);
-            else {
-                // データを再取得し、コンボボックスの選択肢も再評価する
-                fetchStocks();
-            }
-        }
-
-        // 編集モードON
-        function enterEditMode(id) {
-            editingId = id;
-            renderStockList();
-        }
-
-        // 編集キャンセル
-        function cancelEdit() {
-            editingId = null;
-            renderStockList();
-        }
-
-        // 編集内容を保存
-        async function saveEdit(id) {
-            const nextDrug = document.getElementById(`edit-drug-${id}`).value.trim();
-            const nextShizai = document.getElementById(`edit-shizai-${id}`).value.trim();
-            const nextCurrent = parseInt(document.getElementById(`edit-current-${id}`).value) || 0;
-            const nextMin = parseInt(document.getElementById(`edit-min-${id}`).value) || 0;
-
-            if (!nextDrug || !nextShizai) {
-                alert("薬品名と資材名称は空欄にできません。");
-                return;
-            }
-
-            const { error } = await db
-                .from('shizai_stocks')
-                .update({
-                    drug_name: nextDrug,
-                    shizai_name: nextShizai,
-                    current_stock: nextCurrent,
-                    min_stock: nextMin
-                })
-                .eq('id', id);
-
-            if (error) {
-                alert("修正保存エラー: " + error.message);
-            } else {
-                editingId = null;
-                // 薬品名が変わった可能性があるため、コンボボックスも含めてフル更新
-                selectedDrugFilter = nextDrug; // 編集した薬品の表示を維持
-                fetchStocks();
-            }
-        }
-    </script>
-</body>
-</html>
+        //
