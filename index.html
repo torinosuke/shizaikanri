@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>抗リウマチ薬 資材在庫管理</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body class="bg-gray-100 min-h-screen text-gray-800 font-sans pb-12">
@@ -37,20 +37,20 @@
             <div class="space-y-3 text-sm">
                 <div>
                     <label class="block text-gray-600 font-medium mb-1">対象薬品名</label>
-                    <input type="text" id="input-drug" placeholder="例：〇〇皮下注" class="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-400 outline-none">
+                    <input type="text" id="input-drug" placeholder="例：〇〇皮下注" class="w-full p-2 border rounded-lg outline-none">
                 </div>
                 <div>
                     <label class="block text-gray-600 font-medium mb-1">資材名称</label>
-                    <input type="text" id="input-shizai" placeholder="例：患者用説明資材、保冷バッグ" class="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-400 outline-none">
+                    <input type="text" id="input-shizai" placeholder="例：患者用説明資材、保冷バッグ" class="w-full p-2 border rounded-lg outline-none">
                 </div>
                 <div class="grid grid-cols-2 gap-2">
                     <div>
                         <label class="block text-gray-600 font-medium mb-1">初期在庫数</label>
-                        <input type="number" id="input-current" value="0" min="0" class="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-400 outline-none">
+                        <input type="number" id="input-current" value="0" min="0" class="w-full p-2 border rounded-lg outline-none">
                     </div>
                     <div>
                         <label class="block text-gray-600 font-medium mb-1">最低在庫数</label>
-                        <input type="number" id="input-min" value="2" min="0" class="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-400 outline-none">
+                        <input type="number" id="input-min" value="2" min="0" class="w-full p-2 border rounded-lg outline-none">
                     </div>
                 </div>
                 <button onclick="addNewShizai()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-lg transition mt-2">
@@ -84,7 +84,6 @@
 
         // グローバルデータ保管
         let currentStocksData = [];
-        // 現在どの資材を編集モードにしているかを記録する変数 (null または 資材ID)
         let editingId = null;
 
         document.addEventListener("DOMContentLoaded", fetchStocks);
@@ -169,10 +168,10 @@
                         `;
                     }
 
-                    // 🛠️ 編集ボタンが押されているカードの場合、入力用フォームを描画する
+                    // 編集中のカード表示
                     if (editingId === item.id) {
                         const editCardHtml = `
-                            <div class="bg-blue-50/50 p-4 rounded-xl shadow-sm border border-blue-400 transition-all text-sm space-y-2">
+                            <div class="bg-blue-50 p-4 rounded-xl shadow-sm border border-blue-400 text-sm space-y-2">
                                 <div class="font-bold text-blue-800 text-xs mb-1">✏️ 登録情報を編集中</div>
                                 <div>
                                     <label class="block text-xs text-gray-500 mb-0.5">薬品名</label>
@@ -193,4 +192,205 @@
                                     </div>
                                 </div>
                                 <div class="grid grid-cols-2 gap-2 pt-2">
-                                    <button onclick
+                                    <button onclick="cancelEdit()" class="bg-gray-300 text-gray-700 font-bold py-1.5 rounded-lg">
+                                        キャンセル
+                                    </button>
+                                    <button onclick="saveEdit(${item.id})" class="bg-blue-600 text-white font-bold py-1.5 rounded-lg">
+                                        変更を保存
+                                    </button>
+                                </div>
+                            </div>
+                        `;
+                        stockListElement.innerHTML += editCardHtml;
+                        return;
+                    }
+
+                    // 通常時のカード表示
+                    let statusBadge = `<span class="bg-green-100 text-green-800 text-xs font-bold px-2.5 py-0.5 rounded">在庫あり</span>`;
+                    let cardBorder = "border-gray-200";
+
+                    if (item.is_ordering) {
+                        statusBadge = `<span class="bg-yellow-100 text-yellow-800 text-xs font-bold px-2.5 py-0.5 rounded">🟡 取り寄せ中</span>`;
+                        cardBorder = "border-yellow-300 bg-yellow-100";
+                    } else if (isShortage) {
+                        statusBadge = `<span class="bg-red-100 text-red-800 text-xs font-bold px-2.5 py-0.5 rounded">🔴 要発注</span>`;
+                        cardBorder = "border-red-300 bg-red-100";
+                    }
+
+                    const cardHtml = `
+                        <div class="bg-white p-4 rounded-xl shadow-sm border ${cardBorder}">
+                            <div class="flex justify-between items-start mb-2">
+                                <div>
+                                    <span class="text-xs text-gray-500 block">${item.drug_name}</span>
+                                    <h3 class="font-bold text-gray-800 text-base">${item.shizai_name}</h3>
+                                </div>
+                                <div class="flex flex-col items-end space-y-1.5">
+                                    ${statusBadge}
+                                    <div class="flex space-x-2 text-xs text-gray-400">
+                                        <button onclick="enterEditMode(${item.id})" class="hover:text-blue-600 p-0.5">
+                                            ✏️ 編集
+                                        </button>
+                                        <button onclick="deleteShizai(${item.id})" class="hover:text-red-500 p-0.5">
+                                            🗑️ 削除
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="grid grid-cols-2 gap-2 text-sm text-gray-600 mb-3 bg-gray-50 p-2 rounded">
+                                <div>現在在庫: <span class="font-bold text-lg text-gray-900">${item.current_stock}</span> 個</div>
+                                <div>最低在庫: <span class="font-medium">${item.min_stock}</span> 個</div>
+                            </div>
+
+                            <div class="space-y-2">
+                                <div class="grid grid-cols-2 gap-2">
+                                    <button onclick="updateStock(${item.id}, ${item.current_stock - 1})" 
+                                        class="bg-gray-800 hover:bg-gray-900 text-white text-xs font-bold py-2 px-3 rounded-lg"
+                                        ${item.current_stock <= 0 ? 'disabled class="opacity-50"' : ''}>
+                                        払出 (-1)
+                                    </button>
+                                    
+                                    ${item.is_ordering ? `
+                                        <button onclick="toggleOrderStatus(${item.id}, true)" 
+                                            class="bg-gray-400 text-white text-xs font-bold py-2 px-3 rounded-lg">
+                                            取り寄せを取消
+                                        </button>
+                                    ` : `
+                                        <button onclick="toggleOrderStatus(${item.id}, false)" 
+                                            class="bg-yellow-500 hover:bg-yellow-600 text-white text-xs font-bold py-2 px-3 rounded-lg">
+                                            取り寄せ中に変更
+                                        </button>
+                                    `}
+                                </div>
+
+                                ${item.is_ordering ? `
+                                    <div class="flex items-center space-x-2 pt-1 border-t border-dashed border-gray-200">
+                                        <input type="number" id="arrival-count-${item.id}" value="5" min="1" 
+                                            class="w-16 p-1 text-center text-sm border rounded font-bold">
+                                        <span class="text-xs text-gray-500">個が</span>
+                                        <button onclick="executeArrival(${item.id}, ${item.current_stock})" 
+                                            class="flex-1 bg-green-600 hover:bg-green-700 text-white text-xs font-bold py-1.5 px-2 rounded-lg shadow-sm">
+                                            入荷完了
+                                        </button>
+                                    </div>
+                                ` : ''}
+                            </div>
+                        </div>
+                    `;
+                    stockListElement.innerHTML += cardHtml;
+                });
+
+                if (hasAlert) { alertSection.classList.remove("hidden"); } else { alertSection.classList.add("hidden"); }
+
+            } catch (e) {
+                stockListElement.innerHTML = "";
+                errorText.innerText = "通信エラー: " + e.message;
+                errorArea.classList.remove("hidden");
+            }
+        }
+
+        // 払出用の在庫数更新
+        async function updateStock(id, newStock) {
+            if (newStock < 0) return;
+            const { error } = await db
+                .from('shizai_stocks')
+                .update({ current_stock: newStock })
+                .eq('id', id);
+
+            if (error) alert("更新エラー: " + error.message);
+            else fetchStocks();
+        }
+
+        // 取り寄せ中ステータスの切り替え
+        async function toggleOrderStatus(id, currentOrderingStatus) {
+            const { error } = await db
+                .from('shizai_stocks')
+                .update({ is_ordering: !currentOrderingStatus })
+                .eq('id', id);
+
+            if (error) alert("更新エラー: " + error.message);
+            else fetchStocks();
+        }
+
+        // 入荷処理を実行
+        async function executeArrival(id, currentStock) {
+            const inputElement = document.getElementById(`arrival-count-${id}`);
+            const arrivalCount = parseInt(inputElement.value) || 0;
+
+            if (arrivalCount <= 0) {
+                alert("1以上の数字を入力してください。");
+                return;
+            }
+
+            const newStock = currentStock + arrivalCount;
+
+            const { error } = await db
+                .from('shizai_stocks')
+                .update({ current_stock: newStock, is_ordering: false })
+                .eq('id', id);
+
+            if (error) alert("入荷処理エラー: " + error.message);
+            else fetchStocks();
+        }
+
+        // 資材を削除
+        async function deleteShizai(id) {
+            const targetItem = currentStocksData.find(item => item.id === id);
+            const nameForConfirm = targetItem ? `${targetItem.drug_name}の${targetItem.shizai_name}` : "この資材";
+
+            const isConfirmed = confirm(`【確認】\n「${nameForConfirm}」の登録を完全に削除しますか？\n（この操作は取り消せません）`);
+            if (!isConfirmed) return;
+
+            const { error } = await db
+                .from('shizai_stocks')
+                .delete()
+                .eq('id', id);
+
+            if (error) alert("削除エラー: " + error.message);
+            else fetchStocks();
+        }
+
+        // 編集モードON
+        function enterEditMode(id) {
+            editingId = id;
+            fetchStocks();
+        }
+
+        // 編集キャンセル
+        function cancelEdit() {
+            editingId = null;
+            fetchStocks();
+        }
+
+        // 編集内容を保存
+        async function saveEdit(id) {
+            const nextDrug = document.getElementById(`edit-drug-${id}`).value.trim();
+            const nextShizai = document.getElementById(`edit-shizai-${id}`).value.trim();
+            const nextCurrent = parseInt(document.getElementById(`edit-current-${id}`).value) || 0;
+            const nextMin = parseInt(document.getElementById(`edit-min-${id}`).value) || 0;
+
+            if (!nextDrug || !nextShizai) {
+                alert("薬品名と資材名称は空欄にできません。");
+                return;
+            }
+
+            const { error } = await db
+                .from('shizai_stocks')
+                .update({
+                    drug_name: nextDrug,
+                    shizai_name: nextShizai,
+                    current_stock: nextCurrent,
+                    min_stock: nextMin
+                })
+                .eq('id', id);
+
+            if (error) {
+                alert("修正保存エラー: " + error.message);
+            } else {
+                editingId = null;
+                fetchStocks();
+            }
+        }
+    </script>
+</body>
+</html>
