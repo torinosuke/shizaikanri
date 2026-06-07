@@ -3,22 +3,28 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>抗リウマチ薬 資材在庫管理 (ローカルテスト版)</title>
+    <title>抗リウマチ薬 資材在庫管理</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body class="bg-gray-100 min-h-screen text-gray-800">
 
     <header class="bg-blue-600 text-white p-4 sticky top-0 z-50 shadow-md">
         <div class="container mx-auto flex justify-between items-center">
-            <h1 class="text-xl font-bold">リウマチ資材管理 (テスト)</h1>
-            <button onclick="resetData()" class="bg-blue-700 hover:bg-blue-800 px-3 py-1 rounded text-sm transition">
-                🔄 リセット
+            <h1 class="text-xl font-bold">リウマチ資材管理</h1>
+            <button onclick="fetchStocks()" class="bg-blue-700 hover:bg-blue-800 px-3 py-1 rounded text-sm transition">
+                🔄 更新
             </button>
         </div>
     </header>
 
     <main class="container mx-auto p-4 max-w-md">
         
+        <div id="error-message" class="mb-4 bg-orange-100 border-l-4 border-orange-500 text-orange-700 p-3 rounded text-sm hidden">
+            <strong>⚠️ 接続エラーが発生しました:</strong>
+            <p id="error-text" class="mt-1"></p>
+        </div>
+
         <div id="alert-section" class="mb-4 hidden">
             <h2 class="text-red-600 font-bold text-sm mb-2">⚠️ 発注が必要な資材</h2>
             <div id="alert-list" class="space-y-2"></div>
@@ -28,135 +34,169 @@
 
         <h2 class="font-bold text-lg mb-3 text-gray-700">資材一覧</h2>
         <div id="stock-list" class="space-y-3">
-            <p class="text-center text-gray-500 py-8">データを読み込み中...</p>
+            <p class="text-center text-gray-500 py-8">データベースから読み込み中...</p>
         </div>
     </main>
 
     <script>
-        // スマホのメモリ上（ローカル）だけで保持するテストデータ
-        let stocks = [
-            { id: 1, drug_name: "〇〇皮下注", shizai_name: "患者用スターターキット", current_stock: 2, min_stock: 3, is_ordering: false },
-            { id: 2, drug_name: "〇〇皮下注", shizai_name: "専用保冷バッグ（黒）", current_stock: 5, min_stock: 2, is_ordering: false },
-            { id: 3, drug_name: "△△皮下注", shizai_name: "医療廃棄物用袋", current_stock: 1, min_stock: 3, is_ordering: true }
-        ];
-
-        // 起動時に表示
-        document.addEventListener("DOMContentLoaded", renderInitial);
-
-        function renderInitial() {
-            fetchStocks();
+        // ==========================================
+        // 🛠️ Supabaseの設定（★ここに貼ってください）
+        // ==========================================
+        const SUPABASE_URL = "https://kkxpqxaxthrcxdvrmbty.supabase.co";
+        const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtreHBxeGF4dGhyY3hkdnJtYnR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3NzMzODgsImV4cCI6MjA5NjM0OTM4OH0.Ptcn2lYMqbn4L5g1sV7r6E372cxfIyhsxgAkH7a65aU";
+        
+        let db;
+        try {
+            db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        } catch (e) {
+            console.error(e);
         }
 
-        // 画面を描画する関数
-        function fetchStocks() {
+        // 起動時にデータを取得
+        document.addEventListener("DOMContentLoaded", fetchStocks);
+
+        // データ取得関数
+        async function fetchStocks() {
             const stockListElement = document.getElementById("stock-list");
             const alertSection = document.getElementById("alert-section");
             const alertListElement = document.getElementById("alert-list");
+            const errorArea = document.getElementById("error-message");
+            const errorText = document.getElementById("error-text");
 
-            stockListElement.innerHTML = "";
-            alertListElement.innerHTML = "";
-            let hasAlert = false;
+            errorArea.classList.add("hidden");
 
-            stocks.forEach(item => {
-                const isShortage = item.current_stock <= item.min_stock;
-                const isNeedOrder = isShortage && !item.is_ordering;
+            if (!SUPABASE_URL || SUPABASE_URL.includes("YOUR_")) {
+                stockListElement.innerHTML = "";
+                errorText.innerText = "URLとAPIキーが初期状態のままです。ご自身のSupabaseのキーに書き換えてください。";
+                errorArea.classList.remove("hidden");
+                return;
+            }
 
-                let statusBadge = `<span class="bg-green-100 text-green-800 text-xs font-bold px-2.5 py-0.5 rounded">在庫あり</span>`;
-                let cardBorder = "border-gray-200";
+            try {
+                const { data: stocks, error } = await db
+                    .from('shizai_stocks')
+                    .select('*')
+                    .order('id', { ascending: true });
 
-                if (item.is_ordering) {
-                    statusBadge = `<span class="bg-yellow-100 text-yellow-800 text-xs font-bold px-2.5 py-0.5 rounded">🟡 取り寄せ中</span>`;
-                    cardBorder = "border-yellow-300 bg-yellow-50/30";
-                } else if (isShortage) {
-                    statusBadge = `<span class="bg-red-100 text-red-800 text-xs font-bold px-2.5 py-0.5 rounded">🔴 要発注</span>`;
-                    cardBorder = "border-red-300 bg-red-50/50";
+                if (error) {
+                    stockListElement.innerHTML = "";
+                    errorText.innerText = `${error.message} (コード: ${error.code})\nテーブル名やアクセス権限を確認してください。`;
+                    errorArea.classList.remove("hidden");
+                    return;
                 }
 
-                if (isNeedOrder) {
-                    hasAlert = true;
-                    alertListElement.innerHTML += `
-                        <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-2 text-sm rounded shadow-sm">
-                            <strong>${item.drug_name}</strong>: ${item.shizai_name} (残り ${item.current_stock}個 / 最低 ${item.min_stock}個)
+                if (!stocks || stocks.length === 0) {
+                    stockListElement.innerHTML = `<p class="text-center text-gray-500 py-8">接続は成功しましたが、テーブルにデータが1件もありません。Supabase側でデータを追加してください。</p>`;
+                    return;
+                }
+
+                // 表示のクリア
+                stockListElement.innerHTML = "";
+                alertListElement.innerHTML = "";
+                let hasAlert = false;
+
+                stocks.forEach(item => {
+                    const isShortage = item.current_stock <= item.min_stock;
+                    const isNeedOrder = isShortage && !item.is_ordering;
+
+                    let statusBadge = `<span class="bg-green-100 text-green-800 text-xs font-bold px-2.5 py-0.5 rounded">在庫あり</span>`;
+                    let cardBorder = "border-gray-200";
+
+                    if (item.is_ordering) {
+                        statusBadge = `<span class="bg-yellow-100 text-yellow-800 text-xs font-bold px-2.5 py-0.5 rounded">🟡 取り寄せ中</span>`;
+                        cardBorder = "border-yellow-300 bg-yellow-50/30";
+                    } else if (isShortage) {
+                        statusBadge = `<span class="bg-red-100 text-red-800 text-xs font-bold px-2.5 py-0.5 rounded">🔴 要発注</span>`;
+                        cardBorder = "border-red-300 bg-red-50/50";
+                    }
+
+                    if (isNeedOrder) {
+                        hasAlert = true;
+                        alertListElement.innerHTML += `
+                            <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-2 text-sm rounded shadow-sm">
+                                <strong>${item.drug_name}</strong>: ${item.shizai_name} (残り ${item.current_stock}個 / 最低 ${item.min_stock}個)
+                            </div>
+                        `;
+                    }
+
+                    const cardHtml = `
+                        <div class="bg-white p-4 rounded-xl shadow-sm border ${cardBorder} transition-all">
+                            <div class="flex justify-between items-start mb-2">
+                                <div>
+                                    <span class="text-xs text-gray-500 block">${item.drug_name}</span>
+                                    <h3 class="font-bold text-gray-800 text-base">${item.shizai_name}</h3>
+                                </div>
+                                ${statusBadge}
+                            </div>
+                            
+                            <div class="grid grid-cols-2 gap-2 text-sm text-gray-600 mb-3 bg-gray-50 p-2 rounded">
+                                <div>現在在庫: <span class="font-bold text-lg text-gray-900">${item.current_stock}</span> 個</div>
+                                <div>最低在庫: <span class="font-medium">${item.min_stock}</span> 個</div>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-2">
+                                <button onclick="updateStock(${item.id}, ${item.current_stock - 1})" 
+                                    class="bg-gray-800 hover:bg-gray-900 text-white text-xs font-bold py-2 px-3 rounded-lg active:scale-95 transition"
+                                    ${item.current_stock <= 0 ? 'disabled class="opacity-50"' : ''}>
+                                    払出 (-1)
+                                </button>
+                                
+                                ${item.is_ordering ? `
+                                    <button onclick="toggleOrder(${item.id}, false)" 
+                                        class="bg-green-600 hover:bg-green-700 text-white text-xs font-bold py-2 px-3 rounded-lg active:scale-95 transition">
+                                        入荷完了 (在庫+5)
+                                    </button>
+                                ` : `
+                                    <button onclick="toggleOrder(${item.id}, true)" 
+                                        class="bg-yellow-500 hover:bg-yellow-600 text-white text-xs font-bold py-2 px-3 rounded-lg active:scale-95 transition">
+                                        取り寄せ中に変更
+                                    </button>
+                                `}
+                            </div>
                         </div>
                     `;
+                    stockListElement.innerHTML += cardHtml;
+                });
+
+                if (hasAlert) {
+                    alertSection.classList.remove("hidden");
+                } else {
+                    alertSection.classList.add("hidden");
                 }
 
-                const cardHtml = `
-                    <div class="bg-white p-4 rounded-xl shadow-sm border ${cardBorder} transition-all">
-                        <div class="flex justify-between items-start mb-2">
-                            <div>
-                                <span class="text-xs text-gray-500 block">${item.drug_name}</span>
-                                <h3 class="font-bold text-gray-800 text-base">${item.shizai_name}</h3>
-                            </div>
-                            ${statusBadge}
-                        </div>
-                        
-                        <div class="grid grid-cols-2 gap-2 text-sm text-gray-600 mb-3 bg-gray-50 p-2 rounded">
-                            <div>現在在庫: <span class="font-bold text-lg text-gray-900">${item.current_stock}</span> 個</div>
-                            <div>最低在庫: <span class="font-medium">${item.min_stock}</span> 個</div>
-                        </div>
-
-                        <div class="grid grid-cols-2 gap-2">
-                            <button onclick="updateStock(${item.id}, ${item.current_stock - 1})" 
-                                class="bg-gray-800 hover:bg-gray-900 text-white text-xs font-bold py-2 px-3 rounded-lg active:scale-95 transition"
-                                ${item.current_stock <= 0 ? 'disabled class="opacity-50"' : ''}>
-                                払出 (-1)
-                            </button>
-                            
-                            ${item.is_ordering ? `
-                                <button onclick="toggleOrder(${item.id}, false)" 
-                                    class="bg-green-600 hover:bg-green-700 text-white text-xs font-bold py-2 px-3 rounded-lg active:scale-95 transition">
-                                    入荷完了 (在庫+5)
-                                </button>
-                            ` : `
-                                <button onclick="toggleOrder(${item.id}, true)" 
-                                    class="bg-yellow-500 hover:bg-yellow-600 text-white text-xs font-bold py-2 px-3 rounded-lg active:scale-95 transition">
-                                    取り寄せ中に変更
-                                </button>
-                            `}
-                        </div>
-                    </div>
-                `;
-                stockListElement.innerHTML += cardHtml;
-            });
-
-            if (hasAlert) {
-                alertSection.classList.remove("hidden");
-            } else {
-                alertSection.classList.add("hidden");
+            } catch (e) {
+                stockListElement.innerHTML = "";
+                errorText.innerText = "重大な通信エラー: " + e.message;
+                errorArea.classList.remove("hidden");
             }
         }
 
-        // ボタンを押した時の在庫数更新（メモリ上）
-        function updateStock(id, newStock) {
+        async function updateStock(id, newStock) {
             if (newStock < 0) return;
-            const target = stocks.find(item => item.id === id);
-            if (target) {
-                target.current_stock = newStock;
-                fetchStocks();
-            }
+            const { error } = await db
+                .from('shizai_stocks')
+                .update({ current_stock: newStock })
+                .eq('id', id);
+
+            if (error) alert("更新エラー: " + error.message);
+            else fetchStocks();
         }
 
-        // ボタンを押した時の取り寄せステータス更新（メモリ上）
-        function toggleOrder(id, isOrdering) {
-            const target = stocks.find(item => item.id === id);
-            if (target) {
-                target.is_ordering = isOrdering;
-                if (!isOrdering) {
-                    target.current_stock += 5; // 入荷で5個追加
-                }
-                fetchStocks();
+        async function toggleOrder(id, isOrdering) {
+            let updateData = { is_ordering: isOrdering };
+            
+            if (!isOrdering) {
+                const { data } = await db.from('shizai_stocks').select('current_stock').eq('id', id).single();
+                updateData.current_stock = data.current_stock + 5;
             }
-        }
 
-        // データを最初に戻す
-        function resetData() {
-            stocks = [
-                { id: 1, drug_name: "〇〇皮下注", shizai_name: "患者用スターターキット", current_stock: 2, min_stock: 3, is_ordering: false },
-                { id: 2, drug_name: "〇〇皮下注", shizai_name: "専用保冷バッグ（黒）", current_stock: 5, min_stock: 2, is_ordering: false },
-                { id: 3, drug_name: "△△皮下注", shizai_name: "医療廃棄物用袋", current_stock: 1, min_stock: 3, is_ordering: true }
-            ];
-            fetchStocks();
+            const { error } = await db
+                .from('shizai_stocks')
+                .update(updateData)
+                .eq('id', id);
+
+            if (error) alert("更新エラー: " + error.message);
+            else fetchStocks();
         }
     </script>
 </body>
