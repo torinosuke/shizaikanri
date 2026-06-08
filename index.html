@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+    <!DOCTYPE html>
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
@@ -87,14 +87,27 @@
             <div id="alert-list" class="space-y-2"></div>
         </div>
 
-        <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 mb-4">
-            <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">表示する対象薬品を選択</label>
-            <div class="relative">
-                <select id="drug-filter" onchange="filterSelectorChanged()" class="w-full p-3 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 outline-none font-bold text-gray-700 appearance-none">
-                    <option value="ALL">ーー 全ての薬品を表示 ーー</option>
-                </select>
-                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-500">
-                    ▼
+        <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 mb-4 space-y-3">
+            <div>
+                <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">表示する対象薬品を選択</label>
+                <div class="relative">
+                    <select id="drug-filter" onchange="filterSelectorChanged()" class="w-full p-3 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 outline-none font-bold text-gray-700 appearance-none">
+                        <option value="ALL">ーー 全ての薬品を表示 ーー</option>
+                    </select>
+                    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-500">▼</div>
+                </div>
+            </div>
+        
+            <div>
+                <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">並び替え（※要発注・取り寄せ中は常に最上位）</label>
+                <div class="relative">
+                    <select id="sort-selector" onchange="renderStockList()" class="w-full p-2.5 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 outline-none text-sm font-medium text-gray-700 appearance-none">
+                        <option value="default">標準（登録順）</option>
+                        <option value="shizai_asc">資材名称（あいうえお順）</option>
+                        <option value="stock_asc">現在在庫（少ない順）</option>
+                        <option value="stock_desc">現在在庫（多い順）</option>
+                    </select>
+                    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-500">▼</div>
                 </div>
             </div>
         </div>
@@ -278,11 +291,18 @@
                 listTitleElement.innerText = `「${selectedDrugFilter}」の資材一覧`;
             }
 
+            // 1. まずは選択された薬品でフィルターをかける
+            let filteredItems = currentStocksData.filter(item => {
+                if (selectedDrugFilter !== "ALL" && item.drug_name !== selectedDrugFilter) {
+                    return false;
+                }
+                return true;
+            });
+
+            // 院内全体の「要発注リスト（画面上部の赤いアラート用）」はフィルターに関係なく集計
             currentStocksData.forEach(item => {
                 const isShortage = item.current_stock < item.min_stock;
-                const isNeedOrder = isShortage && !item.is_ordering;
-
-                if (isNeedOrder) {
+                if (isShortage && !item.is_ordering) {
                     hasAlert = true;
                     alertListElement.innerHTML += `
                         <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-2 text-sm rounded shadow-sm">
@@ -290,10 +310,36 @@
                         </div>
                     `;
                 }
+            });
 
-                if (selectedDrugFilter !== "ALL" && item.drug_name !== selectedDrugFilter) {
-                    return; 
+            // 2. ➕ 並び替え（ソート）の実行
+            const sortMethod = document.getElementById("sort-selector").value;
+
+            filteredItems.sort((a, b) => {
+                // 🚨 最優先ルール：「要発注」または「取り寄せ中」のステータスかどうかを判定
+                const aIsUrgent = (a.is_ordering || (a.current_stock < a.min_stock)) ? 1 : 0;
+                const bIsUrgent = (b.is_ordering || (b.current_stock < b.min_stock)) ? 1 : 0;
+
+                // どちらか片方だけが緊急なら、緊急側を必ず上に持ってくる
+                if (aIsUrgent !== bIsUrgent) {
+                    return bIsUrgent - aIsUrgent; 
                 }
+
+                // 両方が同じステータス（どちらも緊急、あるいはどちらも通常）の場合、選択されたソート方法を適用
+                if (sortMethod === "shizai_asc") {
+                    return a.shizai_name.localeCompare(b.shizai_name, 'ja'); // あいうえお順
+                } else if (sortMethod === "stock_asc") {
+                    return a.current_stock - b.current_stock; // 在庫少ない順
+                } else if (sortMethod === "stock_desc") {
+                    return b.current_stock - a.current_stock; // 在庫多い順
+                }
+                
+                return 0; // デフォルト（登録順）
+            });
+
+            // 3. 並び替えが終わったデータを画面にカードとして出力
+            filteredItems.forEach(item => {
+                const isShortage = item.current_stock < item.min_stock;
 
                 // 編集中のカード表示
                 if (editingId === item.id) {
@@ -338,12 +384,8 @@
                             </div>
 
                             <div class="grid grid-cols-2 gap-2 pt-2">
-                                <button onclick="cancelEdit()" class="bg-gray-300 text-gray-700 font-bold py-1.5 rounded-lg">
-                                    キャンセル
-                                </button>
-                                <button onclick="saveEdit(${item.id})" class="bg-blue-600 text-white font-bold py-1.5 rounded-lg">
-                                    変更を保存
-                                </button>
+                                <button onclick="cancelEdit()" class="bg-gray-300 text-gray-700 font-bold py-1.5 rounded-lg">キャンセル</button>
+                                <button onclick="saveEdit(${item.id})" class="bg-blue-600 text-white font-bold py-1.5 rounded-lg">変更を保存</button>
                             </div>
                         </div>
                     `;
@@ -351,7 +393,7 @@
                     return;
                 }
 
-                // 【修正版】現在在庫と最低在庫がどちらも0の場合の判定を追加
+                // 通常時のカード表示
                 let statusBadge = `<span class="bg-green-100 text-green-800 text-xs font-bold px-2.5 py-0.5 rounded">在庫あり</span>`;
                 let cardBorder = "border-gray-200";
 
@@ -362,18 +404,15 @@
                     statusBadge = `<span class="bg-red-100 text-red-800 text-xs font-bold px-2.5 py-0.5 rounded">🔴 要発注</span>`;
                     cardBorder = "border-red-300 bg-red-100";
                 } else if (item.current_stock === 0 && item.min_stock === 0) {
-                    // 現在在庫も最低在庫も0のときは、発注は不要だけど「在庫なし（グレー）」にする
                     statusBadge = `<span class="bg-gray-200 text-gray-600 text-xs font-bold px-2.5 py-0.5 rounded">在庫なし</span>`;
-                    cardBorder = "border-gray-300 bg-gray-50"; // カード全体も少し落ち着いたグレー寄りに
+                    cardBorder = "border-gray-300 bg-gray-50";
                 }
-                
-                // 変更点④：オンライン、電話、両方の有無を判定してHTMLを動的に生成
+
                 let orderDetailHtml = "";
                 const hasUrl = item.order_url && item.order_url.trim().startsWith('http');
                 const hasPhone = item.phone_number && item.phone_number.trim() !== "";
 
                 if (!hasUrl && !hasPhone) {
-                    // どちらも登録がない場合
                     orderDetailHtml = `
                         <div class="mt-2 p-2 bg-gray-100 text-xs rounded-lg border border-gray-300 text-gray-500 italic text-center">
                             ⚠️ 発注先登録なし
@@ -381,7 +420,6 @@
                     `;
                 } else {
                     orderDetailHtml = `<div class="mt-2 p-2 bg-blue-50 text-xs rounded-lg border border-blue-200 space-y-2">`;
-                    
                     if (hasUrl) {
                         orderDetailHtml += `
                             <div class="pb-1 ${hasPhone ? 'border-b border-dashed border-blue-200' : ''}">
@@ -408,7 +446,6 @@
                             <div onclick="toggleDetails(${item.id})" class="cursor-pointer flex-1 pr-2 hover:bg-gray-50 rounded transition p-1">
                                 <span class="text-xs text-gray-400 block">${item.drug_name}</span>
                                 <h3 class="font-bold text-gray-800 text-base underline decoration-dotted decoration-blue-400">${item.shizai_name}</h3>
-                                
                                 <span class="text-xs text-blue-500 block mt-0.5 font-medium">🔍 タップで発注先表示</span>
                                 
                                 <div id="detail-area-${item.id}" class="hidden mt-1" onclick="event.stopPropagation();">
@@ -438,38 +475,32 @@
                                 </button>
                                 
                                 ${item.is_ordering ? `
-                                    <button onclick="toggleOrderStatus(${item.id}, true)" 
-                                        class="bg-gray-400 text-white text-xs font-bold py-2 px-3 rounded-lg">
-                                        取り寄せを取消
-                                    </button>
+                                    <button onclick="toggleOrderStatus(${item.id}, true)" class="bg-gray-400 text-white text-xs font-bold py-2 px-3 rounded-lg">取り寄せを取消</button>
                                 ` : `
-                                    <button onclick="toggleOrderStatus(${item.id}, false)" 
-                                        class="bg-yellow-500 hover:bg-yellow-600 text-white text-xs font-bold py-2 px-3 rounded-lg">
-                                        取り寄せ中に変更
-                                    </button>
+                                    <button onclick="toggleOrderStatus(${item.id}, false)" class="bg-yellow-500 hover:bg-yellow-600 text-white text-xs font-bold py-2 px-3 rounded-lg">取り寄せ中に変更</button>
                                 `}
                             </div>
 
                             ${item.is_ordering ? `
                                 <div class="flex items-center space-x-2 pt-1 border-t border-dashed border-gray-200">
-                                <select id="arrival-count-${item.id}" class="w-18 p-1 text-center text-sm border rounded font-bold bg-gray-50 text-gray-700 outline-none">
-                                    <option value="1">1</option>
-                                    <option value="2">2</option>
-                                    <option value="3">3</option>
-                                    <option value="4">4</option>
-                                    <option value="5" selected>5</option> <option value="6">6</option>
-                                    <option value="7">7</option>
-                                    <option value="8">8</option>
-                                    <option value="9">9</option>
-                                    <option value="10">10</option>
-                                </select>
-                                <span class="text-xs text-gray-500">個が</span>
-    
-                                <button onclick="executeArrival(${item.id}, ${item.current_stock})" 
-                                    class="flex-1 bg-green-600 hover:bg-green-700 text-white text-xs font-bold py-1.5 px-2 rounded-lg shadow-sm">
-                                    入荷完了
-                                </button>
-                            </div>
+                                    <select id="arrival-count-${item.id}" class="w-18 p-1 text-center text-sm border rounded font-bold bg-gray-50 text-gray-700 outline-none">
+                                        <option value="1">1</option>
+                                        <option value="2">2</option>
+                                        <option value="3">3</option>
+                                        <option value="4">4</option>
+                                        <option value="5" selected>5</option>
+                                        <option value="6">6</option>
+                                        <option value="7">7</option>
+                                        <option value="8">8</option>
+                                        <option value="9">9</option>
+                                        <option value="10">10</option>
+                                    </select>
+                                    <span class="text-xs text-gray-500">個が</span>
+                                    <button onclick="executeArrival(${item.id}, ${item.current_stock})" 
+                                        class="flex-1 bg-green-600 hover:bg-green-700 text-white text-xs font-bold py-1.5 px-2 rounded-lg shadow-sm">
+                                        入荷完了
+                                    </button>
+                                </div>
                             ` : ''}
                         </div>
                     </div>
