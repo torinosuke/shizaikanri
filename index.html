@@ -452,14 +452,24 @@
 
                             ${item.is_ordering ? `
                                 <div class="flex items-center space-x-2 pt-1 border-t border-dashed border-gray-200">
-                                    <input type="number" id="arrival-count-${item.id}" value="5" min="1" 
-                                        class="w-16 p-1 text-center text-sm border rounded font-bold">
-                                    <span class="text-xs text-gray-500">個が</span>
-                                    <button onclick="executeArrival(${item.id}, ${item.current_stock})" 
-                                        class="flex-1 bg-green-600 hover:bg-green-700 text-white text-xs font-bold py-1.5 px-2 rounded-lg shadow-sm">
-                                        入荷完了
-                                    </button>
-                                </div>
+                                <select id="arrival-count-${item.id}" class="w-18 p-1 text-center text-sm border rounded font-bold bg-gray-50 text-gray-700 outline-none">
+                                    <option value="1">1</option>
+                                    <option value="2">2</option>
+                                    <option value="3">3</option>
+                                    <option value="4">4</option>
+                                    <option value="5" selected>5</option> <option value="6">6</option>
+                                    <option value="7">7</option>
+                                    <option value="8">8</option>
+                                    <option value="9">9</option>
+                                    <option value="10">10</option>
+                                </select>
+                                <span class="text-xs text-gray-500 font-medium">個が入荷</span>
+    
+                                <button onclick="executeArrival(${item.id}, ${item.current_stock})" 
+                                    class="flex-1 bg-green-600 hover:bg-green-700 text-white text-xs font-bold py-1.5 px-2 rounded-lg shadow-sm">
+                                    入荷完了
+                                </button>
+                            </div>
                             ` : ''}
                         </div>
                     </div>
