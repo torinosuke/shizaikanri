@@ -351,7 +351,7 @@
                     return;
                 }
 
-                // 通常時のカード表示
+                // 【修正版】現在在庫と最低在庫がどちらも0の場合の判定を追加
                 let statusBadge = `<span class="bg-green-100 text-green-800 text-xs font-bold px-2.5 py-0.5 rounded">在庫あり</span>`;
                 let cardBorder = "border-gray-200";
 
@@ -361,8 +361,12 @@
                 } else if (isShortage) {
                     statusBadge = `<span class="bg-red-100 text-red-800 text-xs font-bold px-2.5 py-0.5 rounded">🔴 要発注</span>`;
                     cardBorder = "border-red-300 bg-red-100";
+                } else if (item.current_stock === 0 && item.min_stock === 0) {
+                    // 現在在庫も最低在庫も0のときは、発注は不要だけど「在庫なし（グレー）」にする
+                    statusBadge = `<span class="bg-gray-200 text-gray-600 text-xs font-bold px-2.5 py-0.5 rounded">在庫なし</span>`;
+                    cardBorder = "border-gray-300 bg-gray-50"; // カード全体も少し落ち着いたグレー寄りに
                 }
-
+                
                 // 変更点④：オンライン、電話、両方の有無を判定してHTMLを動的に生成
                 let orderDetailHtml = "";
                 const hasUrl = item.order_url && item.order_url.trim().startsWith('http');
