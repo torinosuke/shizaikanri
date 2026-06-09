@@ -1,4 +1,4 @@
-    <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
@@ -6,6 +6,10 @@
     <title>抗リウマチ薬 バイオ資材在庫管理</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        /* タップ時の青い選択ハイライトを消してスマホでの操作感を向上 */
+        .cursor-pointer { -webkit-tap-highlight-color: transparent; }
+    </style>
 </head>
 <body class="bg-gray-100 min-h-screen text-gray-800 font-sans pb-12">
 
@@ -58,12 +62,10 @@
 
                 <div class="border-t pt-2 mt-2 space-y-2 bg-gray-50 p-2 rounded-lg">
                     <label class="block text-gray-700 font-bold text-xs">📦 発注先の設定（ある方だけ入力、両方も可）</label>
-                    
                     <div id="add-field-online" class="border-b pb-2 mb-2">
                         <label class="block text-green-700 text-xs font-bold mb-0.5">💻 オンライン発注URL</label>
                         <input type="url" id="input-order-url" placeholder="https://..." class="w-full p-1.5 border rounded bg-white">
                     </div>
-                    
                     <div id="add-field-phone" class="grid grid-cols-2 gap-2">
                         <div>
                             <label class="block text-blue-700 text-xs font-bold mb-0.5">📞 電話連絡先名</label>
@@ -97,7 +99,7 @@
                     <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-500">▼</div>
                 </div>
             </div>
-        
+
             <div>
                 <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">並び替え（※要発注・取り寄せ中は常に最上位）</label>
                 <div class="relative">
@@ -115,8 +117,7 @@
         <hr class="border-gray-300 my-4">
 
         <h2 id="list-title" class="font-bold text-lg mb-3 text-gray-700">資材一覧</h2>
-        <div id="stock-list" class="space-y-3">
-            <p class="text-center text-gray-500 py-8">データを読み込み中...</p>
+        <div id="stock-list" class="space-y-2"> <p class="text-center text-gray-500 py-8">データを読み込み中...</p>
         </div>
     </main>
 
@@ -130,6 +131,8 @@
         let currentStocksData = [];
         let editingId = null;
         let selectedDrugFilter = "ALL";
+        // 🌟 開いているカードのIDを追跡する（初期状態はすべて閉じている）
+        let openedCardId = null;
 
         document.addEventListener("DOMContentLoaded", fetchStocks);
 
@@ -138,10 +141,29 @@
             form.classList.toggle("hidden");
         }
 
+        // 🌟 アコーディオン開閉ロジックの刷新（1つのカードだけが開くアコーディオンに）
         function toggleDetails(id) {
-            const detailArea = document.getElementById(`detail-area-${id}`);
-            if (detailArea) {
-                detailArea.classList.toggle("hidden");
+            const panel = document.getElementById(`control-panel-${id}`);
+            const arrow = document.getElementById(`arrow-${id}`);
+            if (!panel) return;
+
+            if (openedCardId === id) {
+                // すでに開いているカードをタップしたら閉じる
+                panel.classList.add("hidden");
+                if (arrow) arrow.innerText = "▼";
+                openedCardId = null;
+            } else {
+                // 他に開いているカードがあれば閉じる
+                if (openedCardId !== null) {
+                    const oldPanel = document.getElementById(`control-panel-${openedCardId}`);
+                    const oldArrow = document.getElementById(`arrow-${openedCardId}`);
+                    if (oldPanel) oldPanel.classList.add("hidden");
+                    if (oldArrow) oldArrow.innerText = "▼";
+                }
+                // タップされたカードを開く
+                panel.classList.remove("hidden");
+                if (arrow) arrow.innerText = "▲";
+                openedCardId = id;
             }
         }
 
@@ -157,7 +179,6 @@
             }
         }
 
-        // 新しい資材をSupabaseに挿入
         async function addNewShizai() {
             const selectElement = document.getElementById("input-drug-select");
             const textInputElement = document.getElementById("input-drug-text");
@@ -188,7 +209,7 @@
                     current_stock: current, 
                     min_stock: min, 
                     is_ordering: false,
-                    order_type: 'hybrid', // ラジオボタン廃止に伴い、内部はハイブリッド扱いに
+                    order_type: 'hybrid',
                     order_url: orderUrl,
                     phone_name: phoneName,
                     phone_number: phoneNumber
@@ -291,7 +312,6 @@
                 listTitleElement.innerText = `「${selectedDrugFilter}」の資材一覧`;
             }
 
-            // 1. まずは選択された薬品でフィルターをかける
             let filteredItems = currentStocksData.filter(item => {
                 if (selectedDrugFilter !== "ALL" && item.drug_name !== selectedDrugFilter) {
                     return false;
@@ -299,7 +319,6 @@
                 return true;
             });
 
-            // 院内全体の「要発注リスト（画面上部の赤いアラート用）」はフィルターに関係なく集計
             currentStocksData.forEach(item => {
                 const isShortage = item.current_stock < item.min_stock;
                 if (isShortage && !item.is_ordering) {
@@ -312,32 +331,24 @@
                 }
             });
 
-            // 2. ➕ 並び替え（ソート）の実行
             const sortMethod = document.getElementById("sort-selector").value;
 
             filteredItems.sort((a, b) => {
-                // 🚨 最優先ルール：「要発注」または「取り寄せ中」のステータスかどうかを判定
                 const aIsUrgent = (a.is_ordering || (a.current_stock < a.min_stock)) ? 1 : 0;
                 const bIsUrgent = (b.is_ordering || (b.current_stock < b.min_stock)) ? 1 : 0;
 
-                // どちらか片方だけが緊急なら、緊急側を必ず上に持ってくる
-                if (aIsUrgent !== bIsUrgent) {
-                    return bIsUrgent - aIsUrgent; 
-                }
+                if (aIsUrgent !== bIsUrgent) { return bIsUrgent - aIsUrgent; }
 
-                // 両方が同じステータス（どちらも緊急、あるいはどちらも通常）の場合、選択されたソート方法を適用
                 if (sortMethod === "shizai_asc") {
-                    return a.shizai_name.localeCompare(b.shizai_name, 'ja'); // あいうえお順
+                    return a.shizai_name.localeCompare(b.shizai_name, 'ja');
                 } else if (sortMethod === "stock_asc") {
-                    return a.current_stock - b.current_stock; // 在庫少ない順
+                    return a.current_stock - b.current_stock;
                 } else if (sortMethod === "stock_desc") {
-                    return b.current_stock - a.current_stock; // 在庫多い順
+                    return b.current_stock - a.current_stock;
                 }
-                
-                return 0; // デフォルト（登録順）
+                return 0;
             });
 
-            // 3. 並び替えが終わったデータを画面にカードとして出力
             filteredItems.forEach(item => {
                 const isShortage = item.current_stock < item.min_stock;
 
@@ -393,21 +404,22 @@
                     return;
                 }
 
-                // 通常時のカード表示
-                let statusBadge = `<span class="bg-green-100 text-green-800 text-xs font-bold px-2.5 py-0.5 rounded">在庫あり</span>`;
-                let cardBorder = "border-gray-200";
+                // 通常時のバッジ・カラー判定
+                let statusBadge = `<span class="bg-green-100 text-green-800 text-xs font-bold px-2 py-0.5 rounded shadow-sm whitespace-nowrap">在庫あり</span>`;
+                let cardBorder = "border-gray-200 bg-white hover:bg-gray-50";
 
                 if (item.is_ordering) {
-                    statusBadge = `<span class="bg-yellow-100 text-yellow-800 text-xs font-bold px-2.5 py-0.5 rounded">🟡 取り寄せ中</span>`;
-                    cardBorder = "border-yellow-300 bg-yellow-100";
+                    statusBadge = `<span class="bg-yellow-100 text-yellow-800 text-xs font-bold px-2 py-0.5 rounded shadow-sm whitespace-nowrap">🟡 取り寄せ中</span>`;
+                    cardBorder = "border-yellow-300 bg-yellow-50 hover:bg-yellow-100/70";
                 } else if (isShortage) {
-                    statusBadge = `<span class="bg-red-100 text-red-800 text-xs font-bold px-2.5 py-0.5 rounded">🔴 要発注</span>`;
-                    cardBorder = "border-red-300 bg-red-100";
+                    statusBadge = `<span class="bg-red-100 text-red-800 text-xs font-bold px-2 py-0.5 rounded shadow-sm whitespace-nowrap">🔴 要発注</span>`;
+                    cardBorder = "border-red-200 bg-red-50 hover:bg-red-100/70";
                 } else if (item.current_stock === 0 && item.min_stock === 0) {
-                    statusBadge = `<span class="bg-gray-200 text-gray-600 text-xs font-bold px-2.5 py-0.5 rounded">在庫なし</span>`;
-                    cardBorder = "border-gray-300 bg-gray-50";
+                    statusBadge = `<span class="bg-gray-200 text-gray-600 text-xs font-bold px-2 py-0.5 rounded shadow-sm whitespace-nowrap">在庫なし</span>`;
+                    cardBorder = "border-gray-300 bg-gray-50 hover:bg-gray-100";
                 }
 
+                // 発注先情報の生成
                 let orderDetailHtml = "";
                 const hasUrl = item.order_url && item.order_url.trim().startsWith('http');
                 const hasPhone = item.phone_number && item.phone_number.trim() !== "";
@@ -440,140 +452,5 @@
                     orderDetailHtml += `</div>`;
                 }
 
-                const cardHtml = `
-                    <div class="bg-white p-4 rounded-xl shadow-sm border ${cardBorder}">
-                        <div class="flex justify-between items-start mb-2">
-                            <div onclick="toggleDetails(${item.id})" class="cursor-pointer flex-1 pr-2 hover:bg-gray-50 rounded transition p-1">
-                                <span class="text-xs text-gray-400 block">${item.drug_name}</span>
-                                <h3 class="font-bold text-gray-800 text-base underline decoration-dotted decoration-blue-400">${item.shizai_name}</h3>
-                                <span class="text-xs text-blue-500 block mt-0.5 font-medium">🔍 タップで発注先表示</span>
-                                
-                                <div id="detail-area-${item.id}" class="hidden mt-1" onclick="event.stopPropagation();">
-                                    ${orderDetailHtml}
-                                </div>
-                            </div>
-                            <div class="flex flex-col items-end space-y-1.5">
-                                ${statusBadge}
-                                <div class="flex space-x-2 text-xs text-gray-400">
-                                    <button onclick="enterEditMode(${item.id})" class="hover:text-blue-600 p-0.5">✏️ 編集</button>
-                                    <button onclick="deleteShizai(${item.id})" class="hover:text-red-500 p-0.5">🗑️ 削除</button>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="grid grid-cols-2 gap-2 text-sm text-gray-600 mb-3 bg-gray-50 p-2 rounded">
-                            <div class="flex items-center">現在在庫: <span class="font-bold text-lg text-gray-900 ml-1 mr-0.5">${item.current_stock}</span> 個</div>
-                            <div class="flex items-center">最低在庫: <span class="font-medium text-gray-900 ml-1 mr-0.5">${item.min_stock}</span> 個</div>
-                        </div>
-
-                        <div class="space-y-2">
-                            <div class="grid grid-cols-2 gap-2">
-                                <button onclick="updateStock(${item.id}, ${item.current_stock - 1})" 
-                                    class="bg-gray-800 hover:bg-gray-900 text-white text-xs font-bold py-2 px-3 rounded-lg"
-                                    ${item.current_stock <= 0 ? 'disabled class="opacity-50"' : ''}>
-                                    払い出し (-1)
-                                </button>
-                                
-                                ${item.is_ordering ? `
-                                    <button onclick="toggleOrderStatus(${item.id}, true)" class="bg-gray-400 text-white text-xs font-bold py-2 px-3 rounded-lg">取り寄せを取消</button>
-                                ` : `
-                                    <button onclick="toggleOrderStatus(${item.id}, false)" class="bg-yellow-500 hover:bg-yellow-600 text-white text-xs font-bold py-2 px-3 rounded-lg">取り寄せ中に変更</button>
-                                `}
-                            </div>
-
-                            ${item.is_ordering ? `
-                                <div class="flex items-center space-x-2 pt-1 border-t border-dashed border-gray-200">
-                                    <select id="arrival-count-${item.id}" class="w-18 p-1 text-center text-sm border rounded font-bold bg-gray-50 text-gray-700 outline-none">
-                                        <option value="1">1</option>
-                                        <option value="2">2</option>
-                                        <option value="3">3</option>
-                                        <option value="4">4</option>
-                                        <option value="5" selected>5</option>
-                                        <option value="6">6</option>
-                                        <option value="7">7</option>
-                                        <option value="8">8</option>
-                                        <option value="9">9</option>
-                                        <option value="10">10</option>
-                                    </select>
-                                    <span class="text-xs text-gray-500">個が</span>
-                                    <button onclick="executeArrival(${item.id}, ${item.current_stock})" 
-                                        class="flex-1 bg-green-600 hover:bg-green-700 text-white text-xs font-bold py-1.5 px-2 rounded-lg shadow-sm">
-                                        入荷完了
-                                    </button>
-                                </div>
-                            ` : ''}
-                        </div>
-                    </div>
-                `;
-                stockListElement.innerHTML += cardHtml;
-            });
-
-            if (hasAlert) { alertSection.classList.remove("hidden"); } else { alertSection.classList.add("hidden"); }
-        }
-
-        async function updateStock(id, newStock) {
-            if (newStock < 0) return;
-            const { error } = await db.from('shizai_stocks').update({ current_stock: newStock }).eq('id', id);
-            if (error) alert("更新エラー: " + error.message);
-            else fetchStocks();
-        }
-
-        async function toggleOrderStatus(id, currentOrderingStatus) {
-            const { error } = await db.from('shizai_stocks').update({ is_ordering: !currentOrderingStatus }).eq('id', id);
-            if (error) alert("更新エラー: " + error.message);
-            else fetchStocks();
-        }
-
-        async function executeArrival(id, currentStock) {
-            const inputElement = document.getElementById(`arrival-count-${id}`);
-            const arrivalCount = parseInt(inputElement.value) || 0;
-            if (arrivalCount <= 0) { alert("1以上の数字を入力してください。"); return; }
-            const { error } = await db.from('shizai_stocks').update({ current_stock: currentStock + arrivalCount, is_ordering: false }).eq('id', id);
-            if (error) alert("入荷処理エラー: " + error.message);
-            else fetchStocks();
-        }
-
-        async function deleteShizai(id) {
-            const targetItem = currentStocksData.find(item => item.id === id);
-            const nameForConfirm = targetItem ? `${targetItem.drug_name}の${targetItem.shizai_name}` : "この資材";
-            if (!confirm(`【確認】\n「${nameForConfirm}」の登録を完全に削除しますか？\n（この操作は取り消せません）`)) return;
-
-            const { error } = await db.from('shizai_stocks').delete().eq('id', id);
-            if (error) alert("削除エラー: " + error.message);
-            else fetchStocks();
-        }
-
-        function enterEditMode(id) { editingId = id; renderStockList(); }
-        function cancelEdit() { editingId = null; renderStockList(); }
-
-        async function saveEdit(id) {
-            const nextDrug = document.getElementById(`edit-drug-${id}`).value.trim();
-            const nextShizai = document.getElementById(`edit-shizai-${id}`).value.trim();
-            const nextCurrent = parseInt(document.getElementById(`edit-current-${id}`).value) || 0;
-            const nextMin = parseInt(document.getElementById(`edit-min-${id}`).value) || 0;
-
-            const nextOrderUrl = document.getElementById(`edit-order-url-${id}`).value.trim();
-            const nextPhoneName = document.getElementById(`edit-phone-name-${id}`).value.trim();
-            const nextPhoneNumber = document.getElementById(`edit-phone-number-${id}`).value.trim();
-
-            if (!nextDrug || !nextShizai) { alert("薬品名と資材名称は空欄にできません。"); return; }
-
-            const { error } = await db.from('shizai_stocks')
-                .update({ 
-                    drug_name: nextDrug, 
-                    shizai_name: nextShizai, 
-                    current_stock: nextCurrent, 
-                    min_stock: nextMin,
-                    order_type: 'hybrid',
-                    order_url: nextOrderUrl,
-                    phone_name: nextPhoneName,
-                    phone_number: nextPhoneNumber
-                })
-                .eq('id', id);
-                
-            if (error) alert("修正保存エラー: " + error.message);
-            else { editingId = null; selectedDrugFilter = nextDrug; fetchStocks(); }
-        }
-    </script>
-</body>
-</html>
+                // 🌟 アコーディオンの状態管理（再描画時に開いていたものはそのまま開くようにする）
+                const isCurrentlyOpened = (openedCardId === item
