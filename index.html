@@ -49,6 +49,7 @@
                     <label class="block text-gray-600 font-medium mb-1">資材名称</label>
                     <input type="text" id="input-shizai" placeholder="例：患者用説明資材、保冷バッグ" class="w-full p-2 border rounded-lg outline-none">
                 </div>
+                
                 <div class="grid grid-cols-2 gap-2">
                     <div>
                         <label class="block text-gray-600 font-medium mb-1">初期在庫数</label>
@@ -59,10 +60,11 @@
                         <input type="number" id="input-min" value="2" min="0" class="w-full p-2 border rounded-lg outline-none">
                     </div>
                 </div>
+
                 <div class="mt-3">
                     <label class="block text-gray-600 font-medium mb-1">内訳・備考（※空欄でもOK）</label>
                     <input type="text" id="input-contents" placeholder="例：保冷バッグ・廃棄袋同梱、現在提供終了、など" class="w-full p-3 border rounded-lg outline-none text-sm bg-white">
-                </div>    
+                </div>
 
                 <div class="border-t pt-2 mt-2 space-y-2 bg-gray-50 p-2 rounded-lg">
                     <label class="block text-gray-700 font-bold text-xs">📦 発注先の設定（ある方だけ入力、両方も可）</label>
@@ -111,7 +113,7 @@
                         <option value="default">標準（最終更新が新しい順）</option>
                         <option value="shizai_asc">資材名称（あいうえお順）</option>
                         <option value="stock_asc">現在在庫（少ない順）</option>
-                        <option value="stock_desc">現在在庫（多い順）</option>
+                        <option value="sort_desc">現在在庫（多い順）</option>
                     </select>
                     <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-500">▼</div>
                 </div>
@@ -121,7 +123,8 @@
         <hr class="border-gray-300 my-4">
 
         <h2 id="list-title" class="font-bold text-lg mb-3 text-gray-700">資材一覧</h2>
-        <div id="stock-list" class="space-y-2"> <p class="text-center text-gray-500 py-8">データを読み込み中...</p>
+        <div id="stock-list" class="space-y-2">
+            <p class="text-center text-gray-500 py-8">データを読み込み中...</p>
         </div>
     </main>
 
@@ -135,36 +138,32 @@
         let currentStocksData = [];
         let editingId = null;
         let selectedDrugFilter = "ALL";
-        // 🌟 開いているカードのIDを追跡する（初期状態はすべて閉じている）
         let openedCardId = null;
 
         document.addEventListener("DOMContentLoaded", fetchStocks);
 
+        // クレジット・情報源: 自作資材管理システム用フロントエンドスクリプト
         function toggleAddForm() {
             const form = document.getElementById("add-form-section");
             form.classList.toggle("hidden");
         }
 
-        // 🌟 アコーディオン開閉ロジックの刷新（1つのカードだけが開くアコーディオンに）
         function toggleDetails(id) {
             const panel = document.getElementById(`control-panel-${id}`);
             const arrow = document.getElementById(`arrow-${id}`);
             if (!panel) return;
 
             if (openedCardId === id) {
-                // すでに開いているカードをタップしたら閉じる
                 panel.classList.add("hidden");
                 if (arrow) arrow.innerText = "▼";
                 openedCardId = null;
             } else {
-                // 他に開いているカードがあれば閉じる
                 if (openedCardId !== null) {
                     const oldPanel = document.getElementById(`control-panel-${openedCardId}`);
                     const oldArrow = document.getElementById(`arrow-${openedCardId}`);
                     if (oldPanel) oldPanel.classList.add("hidden");
                     if (oldArrow) oldArrow.innerText = "▼";
                 }
-                // タップされたカードを開く
                 panel.classList.remove("hidden");
                 if (arrow) arrow.innerText = "▲";
                 openedCardId = id;
@@ -191,9 +190,7 @@
             const shizai = document.getElementById("input-shizai").value.trim();
             const current = parseInt(document.getElementById("input-current").value) || 0;
             const min = parseInt(document.getElementById("input-min").value) || 0;
-            // ➕ 備考欄の文字を取得
             const contents = document.getElementById("input-contents").value.trim();
-            
             const orderUrl = document.getElementById("input-order-url").value.trim();
             const phoneName = document.getElementById("input-phone-name").value.trim();
             const phoneNumber = document.getElementById("input-phone-number").value.trim();
@@ -219,7 +216,7 @@
                     order_url: orderUrl,
                     phone_name: phoneName,
                     phone_number: phoneNumber,
-                    contents: contents // ➕ Supabaseに送信
+                    contents: contents
                 }]);
 
             if (error) {
@@ -230,7 +227,7 @@
                 textInputElement.classList.add("hidden");
                 document.getElementById("input-shizai").value = "";
                 document.getElementById("input-current").value = "0";
-                document.getElementById("input-contents").value = ""; // ➕ 入力欄をクリア
+                document.getElementById("input-contents").value = "";
                 document.getElementById("input-order-url").value = "";
                 document.getElementById("input-phone-name").value = "";
                 document.getElementById("input-phone-number").value = "";
@@ -338,18 +335,14 @@
                     `;
                 }
             });
-            
-            // 2. 並び替え（ソート）
-            const sortMethod = document.getElementById("sort-selector").value;
 
+            const sortMethod = document.getElementById("sort-selector").value;
             filteredItems.sort((a, b) => {
-                // 🚨 最優先ルール：「要発注」または「取り寄せ中」のステータスかどうかを判定
                 const aIsUrgent = (a.is_ordering || (a.current_stock < a.min_stock)) ? 1 : 0;
                 const bIsUrgent = (b.is_ordering || (b.current_stock < b.min_stock)) ? 1 : 0;
 
                 if (aIsUrgent !== bIsUrgent) { return bIsUrgent - aIsUrgent; }
 
-                // 通常ステータス同士、または緊急ステータス同士の時の並び替えルール
                 if (sortMethod === "shizai_asc") {
                     const aName = a.shizai_name || "";
                     const bName = b.shizai_name || "";
@@ -360,16 +353,14 @@
                     return (b.current_stock || 0) - (a.current_stock || 0);
                 }
                 
-                // ⏱️ デフォルト（指定なし）は「最終更新日時（updated_at）」が新しい順にする
                 const aTime = a.updated_at ? new Date(a.updated_at).getTime() : 0;
                 const bTime = b.updated_at ? new Date(b.updated_at).getTime() : 0;
-                return bTime - aTime; // 新しいものが上
+                return bTime - aTime;
             });
-            
+
             filteredItems.forEach(item => {
                 const isShortage = item.current_stock < item.min_stock;
 
-                // 編集中のカード表示
                 if (editingId === item.id) {
                     const editCardHtml = `
                         <div class="bg-blue-50 p-4 rounded-xl shadow-sm border border-blue-400 text-sm space-y-2">
@@ -425,7 +416,6 @@
                     return;
                 }
 
-                // 通常時のバッジ・カラー判定
                 let statusBadge = `<span class="bg-green-100 text-green-800 text-xs font-bold px-2 py-0.5 rounded shadow-sm whitespace-nowrap">在庫あり</span>`;
                 let cardBorder = "border-gray-200 bg-white hover:bg-gray-50";
 
@@ -440,11 +430,9 @@
                     cardBorder = "border-gray-300 bg-gray-50 hover:bg-gray-100";
                 }
 
-                // 発注先情報の生成
                 let orderDetailHtml = "";
                 const hasUrl = item.order_url && item.order_url.trim().startsWith('http');
                 const hasPhone = item.phone_number && item.phone_number.trim() !== "";
-
                 if (!hasUrl && !hasPhone) {
                     orderDetailHtml = `
                         <div class="mt-2 p-2 bg-gray-100 text-xs rounded-lg border border-gray-300 text-gray-500 italic text-center">
@@ -473,28 +461,32 @@
                     orderDetailHtml += `</div>`;
                 }
 
-                // 🌟 アコーディオンの状態管理（再描画時に開いていたものはそのまま開くようにする）
                 const isCurrentlyOpened = (openedCardId === item.id);
                 const panelClass = isCurrentlyOpened ? "" : "hidden";
                 const arrowChar = isCurrentlyOpened ? "▲" : "▼";
-
+                
+                // 🛠️ 画面崩れ・インフォメーションマーク消失バグを修正したエリア
                 const cardHtml = `
                     <div onclick="toggleDetails(${item.id})" class="p-3 rounded-xl shadow-sm border ${cardBorder} transition cursor-pointer select-none">
                         
-                        <div class="flex justify-between items-center text-sm">
-                            <div class="flex-1 pr-3 min-w-0">
-                                <span class="text-xxs text-gray-400 block truncate font-medium">${item.drug_name}</span>
-                                <h3 class="font-bold text-gray-800 text-sm truncate flex items-center">
-                                    <span>${item.shizai_name || ''}</span>
+                        <div class="flex justify-between items-start text-sm">
+                            <div class="flex-1 pr-2 min-w-0">
+                                <span class="text-xxs text-gray-400 block truncate font-medium mb-0.5">${item.drug_name}</span>
+                                
+                                <div class="flex items-start max-w-full">
+                                    <h3 class="font-bold text-gray-800 text-sm break-words leading-tight">
+                                        ${item.shizai_name || ''}
+                                    </h3>
                                     ${item.contents ? `
                                         <span onclick="openInfoPopup(event, '${item.shizai_name}', '${item.drug_name}', \`${item.contents.replace(/`/g, '\\`').replace(/'/g, "\\'")}\`)" 
-                                              class="ml-1.5 inline-flex items-center justify-center bg-blue-100 hover:bg-blue-200 text-blue-600 text-xs font-bold rounded-full w-4 h-4 shadow-sm border border-blue-200 flex-shrink-0 animate-pulse">
+                                              class="ml-1.5 inline-flex items-center justify-center bg-blue-100 hover:bg-blue-200 text-blue-600 text-xs font-bold rounded-full w-4 h-4 shadow-sm border border-blue-200 flex-shrink-0 align-middle mt-0.5 animate-pulse">
                                             ℹ️
                                         </span>
                                     ` : ''}
-                                </h3>
+                                </div>
                             </div>
-                            <div class="flex items-center space-x-2 flex-shrink-0">
+                            
+                            <div class="flex items-center space-x-1.5 flex-shrink-0 pt-0.5">
                                 ${statusBadge}
                                 <span id="arrow-${item.id}" class="text-xs text-gray-400 font-bold w-3 text-center">${arrowChar}</span>
                             </div>
@@ -510,11 +502,10 @@
                             <div class="space-y-2">
                                 <div class="grid grid-cols-2 gap-2">
                                     <button onclick="updateStock(${item.id}, ${item.current_stock - 1})" 
-                                        class="bg-gray-800 hover:bg-gray-900 text-white text-xs font-bold py-2 px-3 rounded-lg shadow-sm"
+                                            class="bg-gray-800 hover:bg-gray-900 text-white text-xs font-bold py-2 px-3 rounded-lg shadow-sm"
                                         ${item.current_stock <= 0 ? 'disabled class="opacity-50"' : ''}>
                                         払い出し (-1)
                                     </button>
-                                    
                                     ${item.is_ordering ? `
                                         <button onclick="toggleOrderStatus(${item.id}, true)" class="bg-gray-400 text-white text-xs font-bold py-2 px-3 rounded-lg shadow-sm">取り寄せを取消</button>
                                     ` : `
@@ -538,7 +529,7 @@
                                         </select>
                                         <span class="text-xs text-gray-500">個が</span>
                                         <button onclick="executeArrival(${item.id}, ${item.current_stock})" 
-                                            class="flex-1 bg-green-600 hover:bg-green-700 text-white text-xs font-bold py-1.5 px-2 rounded-lg shadow-sm">
+                                                class="flex-1 bg-green-600 hover:bg-green-700 text-white text-xs font-bold py-1.5 px-2 rounded-lg shadow-sm">
                                             入荷完了
                                         </button>
                                     </div>
@@ -609,9 +600,7 @@
             const nextShizai = document.getElementById(`edit-shizai-${id}`).value.trim();
             const nextCurrent = parseInt(document.getElementById(`edit-current-${id}`).value) || 0;
             const nextMin = parseInt(document.getElementById(`edit-min-${id}`).value) || 0;
-            // ➕ 編集された備考を取得
             const nextContents = document.getElementById(`edit-contents-${id}`).value.trim();
-            
             const nextOrderUrl = document.getElementById(`edit-order-url-${id}`).value.trim();
             const nextPhoneName = document.getElementById(`edit-phone-name-${id}`).value.trim();
             const nextPhoneNumber = document.getElementById(`edit-phone-number-${id}`).value.trim();
@@ -624,27 +613,26 @@
                     shizai_name: nextShizai, 
                     current_stock: nextCurrent, 
                     min_stock: nextMin,
-                    contents: nextContents, // ➕ Supabaseへの更新データを追加
+                    contents: nextContents, 
                     order_type: 'hybrid',
                     order_url: nextOrderUrl,
                     phone_name: nextPhoneName,
                     phone_number: nextPhoneNumber
                 })
                 .eq('id', id);
-                
+
             if (error) alert("修正保存エラー: " + error.message);
             else { editingId = null; selectedDrugFilter = nextDrug; fetchStocks(); }
         }
-        // ➕ 新設：ポップアップを開く
+
         function openInfoPopup(event, shizaiName, drugName, contents) {
-            event.stopPropagation(); // アコーディオンの開閉が同時に動くのを完全に防止
+            event.stopPropagation();
             document.getElementById("popup-shizai-name").innerText = shizaiName;
             document.getElementById("popup-drug-name").innerText = `対象薬品: ${drugName}`;
             document.getElementById("popup-contents").innerText = contents;
             document.getElementById("info-popup").classList.remove("hidden");
         }
 
-        // ➕ 新設：ポップアップを閉じる
         function closeInfoPopup() {
             document.getElementById("info-popup").classList.add("hidden");
         }
