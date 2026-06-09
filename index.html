@@ -58,6 +58,10 @@
                         <label class="block text-gray-600 font-medium mb-1">最低在庫数</label>
                         <input type="number" id="input-min" value="2" min="0" class="w-full p-2 border rounded-lg outline-none">
                     </div>
+                    <div>
+                        <label class="block text-gray-600 font-medium mb-1">内訳・備考（※空欄でもOK）</label>
+                        <input type="text" id="input-contents" placeholder="例：保冷バッグ・廃棄袋同梱、現在提供終了、など" class="w-full p-2 border rounded-lg outline-none text-sm">
+                    </div>
                 </div>
 
                 <div class="border-t pt-2 mt-2 space-y-2 bg-gray-50 p-2 rounded-lg">
@@ -187,7 +191,9 @@
             const shizai = document.getElementById("input-shizai").value.trim();
             const current = parseInt(document.getElementById("input-current").value) || 0;
             const min = parseInt(document.getElementById("input-min").value) || 0;
-
+            // ➕ 備考欄の文字を取得
+            const contents = document.getElementById("input-contents").value.trim();
+            
             const orderUrl = document.getElementById("input-order-url").value.trim();
             const phoneName = document.getElementById("input-phone-name").value.trim();
             const phoneNumber = document.getElementById("input-phone-number").value.trim();
@@ -213,6 +219,7 @@
                     order_url: orderUrl,
                     phone_name: phoneName,
                     phone_number: phoneNumber
+                    contents: contents // ➕ Supabaseに送信
                 }]);
 
             if (error) {
@@ -223,6 +230,7 @@
                 textInputElement.classList.add("hidden");
                 document.getElementById("input-shizai").value = "";
                 document.getElementById("input-current").value = "0";
+                document.getElementById("input-contents").value = ""; // ➕ 入力欄をクリア
                 document.getElementById("input-order-url").value = "";
                 document.getElementById("input-phone-name").value = "";
                 document.getElementById("input-phone-number").value = "";
@@ -383,6 +391,10 @@
                                     <label class="block text-xs text-gray-500 mb-0.5">最低在庫</label>
                                     <input type="number" id="edit-min-${item.id}" value="${item.min_stock}" min="0" class="w-full p-1.5 border rounded">
                                 </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs text-gray-500 mb-0.5">内訳・備考</label>
+                                <input type="text" id="edit-contents-${item.id}" value="${item.contents || ''}" placeholder="例：保冷バッグ同梱、現在提供終了など" class="w-full p-1.5 border rounded text-xs">
                             </div>
                             
                             <div class="border-t pt-2 mt-1 space-y-2 bg-white p-2 rounded border border-blue-200">
@@ -597,7 +609,9 @@
             const nextShizai = document.getElementById(`edit-shizai-${id}`).value.trim();
             const nextCurrent = parseInt(document.getElementById(`edit-current-${id}`).value) || 0;
             const nextMin = parseInt(document.getElementById(`edit-min-${id}`).value) || 0;
-
+            // ➕ 編集された備考を取得
+            const nextContents = document.getElementById(`edit-contents-${id}`).value.trim();
+            
             const nextOrderUrl = document.getElementById(`edit-order-url-${id}`).value.trim();
             const nextPhoneName = document.getElementById(`edit-phone-name-${id}`).value.trim();
             const nextPhoneNumber = document.getElementById(`edit-phone-number-${id}`).value.trim();
@@ -610,6 +624,7 @@
                     shizai_name: nextShizai, 
                     current_stock: nextCurrent, 
                     min_stock: nextMin,
+                    contents: nextContents, // ➕ Supabaseへの更新データを追加
                     order_type: 'hybrid',
                     order_url: nextOrderUrl,
                     phone_name: nextPhoneName,
