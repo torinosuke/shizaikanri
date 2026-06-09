@@ -104,7 +104,7 @@
                 <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">並び替え（※要発注・取り寄せ中は常に最上位）</label>
                 <div class="relative">
                     <select id="sort-selector" onchange="renderStockList()" class="w-full p-2.5 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 outline-none text-sm font-medium text-gray-700 appearance-none">
-                        <option value="default">標準（登録順）</option>
+                        <option value="default">標準（最終更新が新しい順）</option>
                         <option value="shizai_asc">資材名称（あいうえお順）</option>
                         <option value="stock_asc">現在在庫（少ない順）</option>
                         <option value="stock_desc">現在在庫（多い順）</option>
@@ -330,25 +330,34 @@
                     `;
                 }
             });
-
+            
+            // 2. 並び替え（ソート）
             const sortMethod = document.getElementById("sort-selector").value;
 
             filteredItems.sort((a, b) => {
+                // 🚨 最優先ルール：「要発注」または「取り寄せ中」のステータスかどうかを判定
                 const aIsUrgent = (a.is_ordering || (a.current_stock < a.min_stock)) ? 1 : 0;
                 const bIsUrgent = (b.is_ordering || (b.current_stock < b.min_stock)) ? 1 : 0;
 
                 if (aIsUrgent !== bIsUrgent) { return bIsUrgent - aIsUrgent; }
 
+                // 通常ステータス同士、または緊急ステータス同士の時の並び替えルール
                 if (sortMethod === "shizai_asc") {
-                    return a.shizai_name.localeCompare(b.shizai_name, 'ja');
+                    const aName = a.shizai_name || "";
+                    const bName = b.shizai_name || "";
+                    return aName.localeCompare(bName, 'ja');
                 } else if (sortMethod === "stock_asc") {
-                    return a.current_stock - b.current_stock;
+                    return (a.current_stock || 0) - (b.current_stock || 0);
                 } else if (sortMethod === "stock_desc") {
-                    return b.current_stock - a.current_stock;
+                    return (b.current_stock || 0) - (a.current_stock || 0);
                 }
-                return 0;
+                
+                // ⏱️ デフォルト（指定なし）は「最終更新日時（updated_at）」が新しい順にする
+                const aTime = a.updated_at ? new Date(a.updated_at).getTime() : 0;
+                const bTime = b.updated_at ? new Date(b.updated_at).getTime() : 0;
+                return bTime - aTime; // 新しいものが上
             });
-
+            
             filteredItems.forEach(item => {
                 const isShortage = item.current_stock < item.min_stock;
 
