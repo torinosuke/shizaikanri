@@ -472,7 +472,16 @@
                         <div class="flex justify-between items-center text-sm">
                             <div class="flex-1 pr-3 min-w-0">
                                 <span class="text-xxs text-gray-400 block truncate font-medium">${item.drug_name}</span>
-                                <h3 class="font-bold text-gray-800 text-sm truncate">${item.shizai_name}</h3>
+                                //<h3 class="font-bold text-gray-800 text-sm truncate">${item.shizai_name}</h3>
+                                <h3 class="font-bold text-gray-800 text-sm truncate flex items-center">
+                                    <span>${item.shizai_name || ''}</span>
+                                    ${item.contents ? `
+                                        <span onclick="openInfoPopup(event, '${item.shizai_name}', '${item.drug_name}', \`${item.contents.replace(/`/g, '\\`').replace(/'/g, "\\'")}\`)" 
+                                              class="ml-1.5 inline-flex items-center justify-center bg-blue-100 hover:bg-blue-200 text-blue-600 text-xs font-bold rounded-full w-4 h-4 shadow-sm border border-blue-200 flex-shrink-0 animate-pulse">
+                                            ℹ️
+                                        </span>
+                                    ` : ''}
+                                </h3>
                             </div>
                             <div class="flex items-center space-x-2 flex-shrink-0">
                                 ${statusBadge}
@@ -612,6 +621,34 @@
             if (error) alert("修正保存エラー: " + error.message);
             else { editingId = null; selectedDrugFilter = nextDrug; fetchStocks(); }
         }
+        // ➕ 新設：ポップアップを開く
+        function openInfoPopup(event, shizaiName, drugName, contents) {
+            event.stopPropagation(); // アコーディオンの開閉が同時に動くのを完全に防止
+            document.getElementById("popup-shizai-name").innerText = shizaiName;
+            document.getElementById("popup-drug-name").innerText = `対象薬品: ${drugName}`;
+            document.getElementById("popup-contents").innerText = contents;
+            document.getElementById("info-popup").classList.remove("hidden");
+        }
+
+        // ➕ 新設：ポップアップを閉じる
+        function closeInfoPopup() {
+            document.getElementById("info-popup").classList.add("hidden");
+        }
     </script>
+    <div id="info-popup" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 hidden" onclick="closeInfoPopup()">
+        <div class="bg-white rounded-2xl max-w-sm w-full p-5 shadow-xl transform transition-all space-y-3" onclick="event.stopPropagation();">
+            <div class="flex justify-between items-start">
+                <h4 id="popup-shizai-name" class="font-bold text-gray-800 text-base">資材名</h4>
+                <button onclick="closeInfoPopup()" class="text-gray-400 hover:text-gray-600 text-lg font-bold px-1">✕</button>
+            </div>
+            <p class="text-xs text-gray-400 font-medium" id="popup-drug-name">薬品名</p>
+            <div class="bg-blue-50 border border-blue-100 rounded-xl p-3 text-sm text-gray-700 whitespace-pre-wrap leading-relaxed" id="popup-contents">
+                ここに備考や内訳が入ります。
+            </div>
+            <button onclick="closeInfoPopup()" class="w-full bg-gray-800 hover:bg-gray-900 text-white font-bold py-2 rounded-lg text-sm shadow-sm">
+                閉じる
+            </button>
+        </div>
+    </div>
 </body>
 </html>
