@@ -193,7 +193,13 @@
             }
         }
 
-        // 📸 新設：カメラ・ファイルから画像を選んだときのアップロード処理
+        // 📸 URLからStorage内の相対ファイルパスを逆引き抽出するヘルパー関数
+        function extractStoragePath(url) {
+            if (!url || !url.includes('/storage/v1/object/public/shizai-images/')) return null;
+            return url.split('/storage/v1/object/public/shizai-images/')[1];
+        }
+
+        // 📸 カメラ・ファイルから画像を選んだときのアップロード処理
         async function uploadImageHandler(mode, id = null) {
             const fileInput = mode === 'add' ? document.getElementById('input-image-file') : document.getElementById(`edit-image-file-${id}`);
             const statusLabel = mode === 'add' ? document.getElementById('add-upload-status') : document.getElementById(`edit-upload-status-${id}`);
@@ -205,20 +211,29 @@
             statusLabel.innerText = "⏳ アップロード中...";
             statusLabel.className = "text-xxs text-blue-600 font-bold animate-pulse";
 
-            // ファイル名が重複しないよう、タイムスタンプを付与して保存
             const fileExt = file.name.split('.').pop();
             const fileName = `${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${fileExt}`;
             const filePath = `shizai_pics/${fileName}`;
 
             try {
-                // Supabase Storage に画像をアップロード
+                // 🔄 変更：もし「編集モード」で、かつ既に古い写真が存在する場合は、先にStorageから古いファイルを自動削除
+                if (mode === 'edit' && id) {
+                    const targetItem = currentStocksData.find(item => item.id === id);
+                    if (targetItem && targetItem.image_url) {
+                        const oldStoragePath = extractStoragePath(targetItem.image_url);
+                        if (oldStoragePath) {
+                            await db.storage.from('shizai-images').remove([oldStoragePath]);
+                        }
+                    }
+                }
+
+                // 新しい画像をアップロード
                 const { data, error } = await db.storage
                     .from('shizai-images')
                     .upload(filePath, file);
 
                 if (error) throw error;
 
-                // 一般公開用のURL（Public URL）を取得
                 const { data: urlData } = db.storage
                     .from('shizai-images')
                     .getPublicUrl(filePath);
@@ -682,14 +697,33 @@
             else fetchStocks();
         }
 
+        // 🔄 変更：資材削除時に、Storageに登録されている画像ファイルも自動で物理削除する
         async function deleteShizai(id) {
             const targetItem = currentStocksData.find(item => item.id === id);
             const nameForConfirm = targetItem ? `${targetItem.drug_name}の${targetItem.shizai_name}` : "この資材";
-            if (!confirm(`【確認】\n「${nameForConfirm}」の登録を完全に削除しますか？\n（この操作は取り消せません）`)) return;
+            if (!confirm(`【確認】\n「${nameForConfirm}」の登録を完全に削除しますか？\n（撮影した写真データも自動で一緒に削除されます）`)) return;
 
-            const { error } = await db.from('shizai_stocks').delete().eq('id', id);
-            if (error) alert("削除エラー: " + error.message);
-            else fetchStocks();
+            try {
+                // 1. 画像が登録されている場合、先にStorageからファイルを削除
+                if (targetItem && targetItem.image_url) {
+                    const storagePath = extractStoragePath(targetItem.image_url);
+                    if (storagePath) {
+                        const { error: storageError } = await db.storage
+                            .from('shizai-images')
+                            .remove([storagePath]);
+                        if (storageError) console.warn("Storageの画像削除に失敗（スキップします）:", storageError.message);
+                    }
+                }
+
+                // 2. データベースから資材レコードを削除
+                const { error } = await db.from('shizai_stocks').delete().eq('id', id);
+                if (error) throw error;
+
+                fetchStocks();
+
+            } catch (err) {
+                alert("削除エラー: " + err.message);
+            }
         }
 
         function enterEditMode(id) { editingId = id; renderStockList(); }
