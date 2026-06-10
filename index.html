@@ -195,7 +195,7 @@
             const current = parseInt(document.getElementById("input-current").value) || 0;
             const min = parseInt(document.getElementById("input-min").value) || 0;
             const contents = document.getElementById("input-contents").value.trim();
-            const imageUrl = document.getElementById("input-image-url").value.trim(); // ➕ 画像取得
+            const imageUrl = document.getElementById("input-image-url").value.trim();
             const orderUrl = document.getElementById("input-order-url").value.trim();
             const phoneName = document.getElementById("input-phone-name").value.trim();
             const phoneNumber = document.getElementById("input-phone-number").value.trim();
@@ -222,7 +222,7 @@
                     phone_name: phoneName,
                     phone_number: phoneNumber,
                     contents: contents,
-                    image_url: imageUrl // ➕ 保存
+                    image_url: imageUrl
                 }]);
 
             if (error) {
@@ -234,7 +234,7 @@
                 document.getElementById("input-shizai").value = "";
                 document.getElementById("input-current").value = "0";
                 document.getElementById("input-contents").value = "";
-                document.getElementById("input-image-url").value = ""; // ➕ クリア
+                document.getElementById("input-image-url").value = "";
                 document.getElementById("input-order-url").value = "";
                 document.getElementById("input-phone-name").value = "";
                 document.getElementById("input-phone-number").value = "";
@@ -476,20 +476,39 @@
                 const panelClass = isCurrentlyOpened ? "" : "hidden";
                 const arrowChar = isCurrentlyOpened ? "▲" : "▼";
                 
-                // 📷 B案実装：サムネイル写真エリアの作成
-                let thumbnailHtml = `
-                    <div class="w-10 h-10 rounded border flex-shrink-0 bg-gray-100 flex items-center justify-center text-gray-400 text-lg">
-                        📷
-                    </div>
-                `;
+                const safeImgUrl = item.image_url ? item.image_url.replace(/`/g, '\\`').replace(/'/g, "\\'") : '';
+                const safeShizaiName = (item.shizai_name || '').replace(/`/g, '\\`').replace(/'/g, "\\'");
+                const safeDrugName = (item.drug_name || '').replace(/`/g, '\\`').replace(/'/g, "\\'");
+                const safeContents = (item.contents || '').replace(/`/g, '\\`').replace(/'/g, "\\'");
+
+                // 📷 サムネイルタップ時に拡大画像を出す処理（画像がある時だけ cursor-zoom-in スタイルを適用）
+                let thumbnailHtml = "";
                 if (item.image_url && item.image_url.trim() !== "") {
                     thumbnailHtml = `
-                        <img src="${item.image_url.trim()}" class="w-10 h-10 object-cover rounded border flex-shrink-0 bg-white">
+                        <img src="${item.image_url.trim()}" 
+                             onclick="openImagePopup(event, '${safeShizaiName}', '${safeDrugName}', '${safeImgUrl}')"
+                             class="w-10 h-10 object-cover rounded border flex-shrink-0 bg-white cursor-zoom-in active:scale-95 transition-transform" 
+                             title="タップで拡大">
+                    `;
+                } else {
+                    thumbnailHtml = `
+                        <div class="w-10 h-10 rounded border flex-shrink-0 bg-gray-100 flex items-center justify-center text-gray-400 text-lg select-none">
+                            📷
+                        </div>
                     `;
                 }
 
-                // ℹ️マーククリック時に画像パスも渡すようにエスケープ処理を含めて修正
-                const safeImgUrl = item.image_url ? item.image_url.replace(/`/g, '\\`').replace(/'/g, "\\'") : '';
+                // ℹ️マークの判定：備考（contents）が実際に入力されている時のみ表示する
+                let infoButtonHtml = "";
+                if (item.contents && item.contents.trim() !== "") {
+                    infoButtonHtml = `
+                        <span onclick="openInfoPopup(event, '${safeShizaiName}', '${safeDrugName}', \`${safeContents}\`)" 
+                              class="ml-1.5 inline-flex items-center justify-center bg-blue-100 hover:bg-blue-200 text-blue-600 text-xs font-bold rounded-full w-4 h-4 shadow-sm border border-blue-200 flex-shrink-0 align-middle mt-0.5 animate-pulse"
+                              title="備考あり">
+                            ℹ️
+                        </span>
+                    `;
+                }
 
                 const cardHtml = `
                     <div onclick="toggleDetails(${item.id})" class="p-3 rounded-xl shadow-sm border ${cardBorder} transition cursor-pointer select-none">
@@ -497,17 +516,16 @@
                         <div class="flex justify-between items-start text-sm">
                             <div class="flex-1 pr-2 min-w-0 flex items-center space-x-2.5">
                                 
-                                ${thumbnailHtml} <div class="min-w-0 flex-1">
+                                ${thumbnailHtml}
+                                
+                                <div class="min-w-0 flex-1">
                                     <span class="text-xxs text-gray-400 block truncate font-medium mb-0.5">${item.drug_name}</span>
                                     
                                     <div class="flex items-start max-w-full">
                                         <h3 class="font-bold text-gray-800 text-sm break-words leading-tight">
                                             ${item.shizai_name || ''}
                                         </h3>
-                                        <span onclick="openInfoPopup(event, '${item.shizai_name}', '${item.drug_name}', \`${(item.contents || '').replace(/`/g, '\\`').replace(/'/g, "\\'")}\`, '${safeImgUrl}')" 
-                                              class="ml-1.5 inline-flex items-center justify-center bg-blue-100 hover:bg-blue-200 text-blue-600 text-xs font-bold rounded-full w-4 h-4 shadow-sm border border-blue-200 flex-shrink-0 align-middle mt-0.5 animate-pulse">
-                                            ℹ️
-                                        </span>
+                                        ${infoButtonHtml}
                                     </div>
                                 </div>
                             </div>
@@ -569,7 +587,7 @@
                                     ⏱️ 最終更新: ${(() => {
                                         if (!item.updated_at) return "ーー/ーー/ーー ーー:ーー";
                                         const d = new Date(item.updated_at);
-                                        return `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+                                        return `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')} ${String(d.getMinutes()).padStart(2, '0')}`;
                                     })()}
                                 </div>
                                 <div class="flex space-x-3">
@@ -627,7 +645,7 @@
             const nextCurrent = parseInt(document.getElementById(`edit-current-${id}`).value) || 0;
             const nextMin = parseInt(document.getElementById(`edit-min-${id}`).value) || 0;
             const nextContents = document.getElementById(`edit-contents-${id}`).value.trim();
-            const nextImageUrl = document.getElementById(`edit-image-url-${id}`).value.trim(); // ➕ 画像取得
+            const nextImageUrl = document.getElementById(`edit-image-url-${id}`).value.trim();
             const nextOrderUrl = document.getElementById(`edit-order-url-${id}`).value.trim();
             const nextPhoneName = document.getElementById(`edit-phone-name-${id}`).value.trim();
             const nextPhoneNumber = document.getElementById(`edit-phone-number-${id}`).value.trim();
@@ -641,7 +659,7 @@
                     current_stock: nextCurrent, 
                     min_stock: nextMin,
                     contents: nextContents, 
-                    image_url: nextImageUrl, // ➕ 編集保存
+                    image_url: nextImageUrl,
                     order_type: 'hybrid',
                     order_url: nextOrderUrl,
                     phone_name: nextPhoneName,
@@ -653,31 +671,38 @@
             else { editingId = null; selectedDrugFilter = nextDrug; fetchStocks(); }
         }
 
-        // ℹ️ ポップアップ表示関数を画像対応に拡張
-        function openInfoPopup(event, shizaiName, drugName, contents, imageUrl) {
+        // ℹ️ 備考用ポップアップを表示する関数（画像枠を撤去してテキストに特化）
+        function openInfoPopup(event, shizaiName, drugName, contents) {
             event.stopPropagation();
+            document.getElementById("popup-title").innerText = "⚠️ 資材の備考・内訳";
             document.getElementById("popup-shizai-name").innerText = shizaiName;
             document.getElementById("popup-drug-name").innerText = `対象薬品: ${drugName}`;
             
-            // 備考（contents）が空欄の場合は非表示、ある場合は表示
             const contentsElement = document.getElementById("popup-contents");
-            if (contents && contents.trim() !== "") {
-                contentsElement.innerText = contents;
-                contentsElement.classList.remove("hidden");
-            } else {
-                contentsElement.classList.add("hidden");
-            }
+            contentsElement.innerText = contents;
+            contentsElement.classList.remove("hidden");
             
-            // 画像URLがある場合はポップアップ内に拡大表示
+            // 画像枠は非表示にする
+            document.getElementById("popup-image-container").classList.add("hidden");
+            
+            document.getElementById("info-popup").classList.remove("hidden");
+        }
+
+        // 📷 画像拡大用ポップアップを表示する関数
+        function openImagePopup(event, shizaiName, drugName, imageUrl) {
+            event.stopPropagation(); // カード開閉イベントをストップ
+            document.getElementById("popup-title").innerText = "📷 資材写真の拡大";
+            document.getElementById("popup-shizai-name").innerText = shizaiName;
+            document.getElementById("popup-drug-name").innerText = `対象薬品: ${drugName}`;
+            
+            // 備考欄は非表示にする
+            document.getElementById("popup-contents").classList.add("hidden");
+            
+            // 画像を表示
             const imgContainer = document.getElementById("popup-image-container");
             const imgElement = document.getElementById("popup-image");
-            if (imageUrl && imageUrl.trim() !== "") {
-                imgElement.src = imageUrl;
-                imgContainer.classList.remove("hidden");
-            } else {
-                imgContainer.classList.add("hidden");
-                imgElement.src = "";
-            }
+            imgElement.src = imageUrl;
+            imgContainer.classList.remove("hidden");
             
             document.getElementById("info-popup").classList.remove("hidden");
         }
@@ -687,22 +712,28 @@
         }
     </script>
     
-    <div id="info-popup" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 hidden" onclick="closeInfoPopup()">
-        <div class="bg-white rounded-2xl max-w-sm w-full p-5 shadow-xl transform transition-all space-y-3" onclick="event.stopPropagation();">
-            <div class="flex justify-between items-start">
-                <h4 id="popup-shizai-name" class="font-bold text-gray-800 text-base leading-snug">資材名</h4>
-                <button onclick="closeInfoPopup()" class="text-gray-400 hover:text-gray-600 text-lg font-bold px-1">✕</button>
-            </div>
-            <p class="text-xs text-gray-400 font-medium" id="popup-drug-name">薬品名</p>
+    <div id="info-popup" class="fixed inset-0 bg-black bg-opacity-60 z-50 flex items-center justify-center p-4 hidden" onclick="closeInfoPopup()">
+        <div class="bg-white rounded-2xl max-w-sm w-full p-5 shadow-2xl transform transition-all space-y-2.5" onclick="event.stopPropagation();">
             
-            <div id="popup-image-container" class="mt-2 text-center hidden">
-                <img id="popup-image" src="" class="w-full h-auto max-h-48 object-contain rounded-lg border bg-gray-50 shadow-inner">
+            <div class="flex justify-between items-center border-b pb-1.5">
+                <span id="popup-title" class="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-0.5 rounded">ポップアップ</span>
+                <button onclick="closeInfoPopup()" class="text-gray-400 hover:text-gray-600 text-xl font-bold px-1">✕</button>
             </div>
 
-            <div class="bg-blue-50 border border-blue-100 rounded-xl p-3 text-sm text-gray-700 whitespace-pre-wrap leading-relaxed hidden" id="popup-contents">
-                ここに備考や内訳が入ります。
+            <div class="pt-1">
+                <h4 id="popup-shizai-name" class="font-bold text-gray-800 text-base leading-tight">資材名</h4>
+                <p class="text-xxs text-gray-400 font-medium mt-0.5" id="popup-drug-name">薬品名</p>
             </div>
-            <button onclick="closeInfoPopup()" class="w-full bg-gray-800 hover:bg-gray-900 text-white font-bold py-2 rounded-lg text-sm shadow-sm">
+            
+            <div id="popup-image-container" class="mt-2 text-center hidden">
+                <img id="popup-image" src="" class="w-full h-auto max-h-64 object-contain rounded-xl border bg-gray-50 shadow-inner">
+            </div>
+
+            <div class="bg-orange-50 border border-orange-100 rounded-xl p-3 text-sm text-gray-700 whitespace-pre-wrap leading-relaxed hidden shadow-inner" id="popup-contents">
+                ここに備考が入ります。
+            </div>
+
+            <button onclick="closeInfoPopup()" class="w-full bg-gray-800 hover:bg-gray-900 text-white font-bold py-2.5 rounded-xl text-sm shadow-sm transition mt-2">
                 閉じる
             </button>
         </div>
