@@ -193,7 +193,7 @@
             }
         }
 
-        // 📸 URLからStorage内の相対ファイルパスを逆引き抽出するヘルパー関数
+        // URLからStorage内の相対ファイルパスを逆引き抽出するヘルパー関数
         function extractStoragePath(url) {
             if (!url || !url.includes('/storage/v1/object/public/shizai-images/')) return null;
             return url.split('/storage/v1/object/public/shizai-images/')[1];
@@ -216,7 +216,7 @@
             const filePath = `shizai_pics/${fileName}`;
 
             try {
-                // 🔄 変更：もし「編集モード」で、かつ既に古い写真が存在する場合は、先にStorageから古いファイルを自動削除
+                // もし「編集モード」で、かつ既に古い写真が存在する場合は、先にStorageから古いファイルを自動削除
                 if (mode === 'edit' && id) {
                     const targetItem = currentStocksData.find(item => item.id === id);
                     if (targetItem && targetItem.image_url) {
@@ -242,11 +242,57 @@
                 statusLabel.innerText = "✅ アップロード完了";
                 statusLabel.className = "text-xxs text-green-600 font-bold";
 
+                // 🌟 新設：編集モード時は即座に「写真削除ボタン」を表示可能にするため、DOMの非表示クラスをコントロール
+                const deleteBtn = document.getElementById(`btn-delete-image-${id}`);
+                if (deleteBtn) deleteBtn.classList.remove("hidden");
+
             } catch (err) {
                 console.error(err);
                 statusLabel.innerText = "❌ エラーが発生しました";
                 statusLabel.className = "text-xxs text-red-500 font-bold";
                 alert("画像のアップロードに失敗しました: " + err.message);
+            }
+        }
+
+        // 🌟 新設：資材データは残したまま、アップロードされている写真だけを即時削除する処理
+        async function deleteImageOnly(id) {
+            const urlHiddenInput = document.getElementById(`edit-image-url-${id}`);
+            const statusLabel = document.getElementById(`edit-upload-status-${id}`);
+            const deleteBtn = document.getElementById(`btn-delete-image-${id}`);
+            
+            if (!urlHiddenInput || !urlHiddenInput.value) return;
+
+            if (!confirm("【確認】この資材の写真データを完全に消去し、「写真なし」の状態に戻しますか？\n（資材の名前や在庫データは削除されません）")) return;
+
+            const currentUrl = urlHiddenInput.value;
+            statusLabel.innerText = "⏳ 写真を消去中...";
+            statusLabel.className = "text-xxs text-orange-600 font-bold";
+
+            try {
+                // 1. Storageから画像の実体を削除
+                const storagePath = extractStoragePath(currentUrl);
+                if (storagePath) {
+                    const { error: storageError } = await db.storage
+                        .from('shizai-images')
+                        .remove([storagePath]);
+                    if (storageError) console.warn("Storageからの削除に失敗しました（処理は継続します）:", storageError.message);
+                }
+
+                // 2. 編集フォーム内の隠しURLを空文字にする
+                urlHiddenInput.value = "";
+                
+                // 3. 画面のラベル表示を更新
+                statusLabel.innerText = "🗑️ 写真を削除しました（未保存）";
+                statusLabel.className = "text-xxs text-red-500 font-bold";
+                
+                // 4. ボタン自体を隠す
+                if (deleteBtn) deleteBtn.classList.add("hidden");
+
+            } catch (err) {
+                console.error(err);
+                alert("写真の消去中にエラーが発生しました: " + err.message);
+                statusLabel.innerText = "現在の画像あり";
+                statusLabel.className = "text-xxs text-gray-400 truncate";
             }
         }
 
@@ -436,6 +482,9 @@
                 const isShortage = item.current_stock < item.min_stock;
 
                 if (editingId === item.id) {
+                    // 🌟 変更点：写真がある場合だけ「削除ボタン」を表示するためのクラス切り替え判定
+                    const hasPhoto = item.image_url && item.image_url.trim() !== "";
+
                     const editCardHtml = `
                         <div class="bg-blue-50 p-4 rounded-xl shadow-sm border border-blue-400 text-sm space-y-2">
                             <div class="font-bold text-blue-800 text-xs mb-1">✏️ 登録情報を編集中</div>
@@ -463,14 +512,17 @@
                             </div>
                             
                             <div class="bg-white p-2 rounded border border-gray-200">
-                                <label class="block text-xxs font-bold text-gray-500 mb-1">📸 資材の写真を変更・追加</label>
-                                <div class="flex items-center space-x-2">
+                                <label class="block text-xxs font-bold text-gray-500 mb-1">📸 資材の写真を変更・追加・削除</label>
+                                <div class="flex items-center space-x-2 flex-wrap gap-y-1.5">
                                     <input type="file" id="edit-image-file-${item.id}" accept="image/*" capture="environment" onchange="uploadImageHandler('edit', ${item.id})" class="hidden">
                                     <button type="button" onclick="document.getElementById('edit-image-file-${item.id}').click()" class="bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-1 px-2 rounded text-xxs border transition">
                                         📷 写真を変更
                                     </button>
+                                    <button type="button" id="btn-delete-image-${item.id}" onclick="deleteImageOnly(${item.id})" class="bg-red-50 hover:bg-red-100 text-red-600 font-bold py-1 px-2 rounded text-xxs border border-red-200 transition ${hasPhoto ? '' : 'hidden'}">
+                                        🗑️ 写真を削除
+                                    </button>
                                     <span id="edit-upload-status-${item.id}" class="text-xxs text-gray-400 truncate max-w-[150px]">
-                                        ${item.image_url ? '現在の画像あり' : '未登録'}
+                                        ${hasPhoto ? '現在の画像あり' : '未登録'}
                                     </span>
                                 </div>
                                 <input type="hidden" id="edit-image-url-${item.id}" value="${item.image_url || ''}">
@@ -697,14 +749,12 @@
             else fetchStocks();
         }
 
-        // 🔄 変更：資材削除時に、Storageに登録されている画像ファイルも自動で物理削除する
         async function deleteShizai(id) {
             const targetItem = currentStocksData.find(item => item.id === id);
             const nameForConfirm = targetItem ? `${targetItem.drug_name}の${targetItem.shizai_name}` : "この資材";
-            if (!confirm(`【確認】\n「${nameForConfirm}」の登録を完全に削除しますか？\n（撮影した写真データも自動で一緒に削除されます）`)) return;
+            if (!confirm(`【確認】\n「${nameForConfirm}」の登録を完全に削除しますか？\n（礼服・撮影した写真データも自動で一緒に削除されます）`)) return;
 
             try {
-                // 1. 画像が登録されている場合、先にStorageからファイルを削除
                 if (targetItem && targetItem.image_url) {
                     const storagePath = extractStoragePath(targetItem.image_url);
                     if (storagePath) {
@@ -715,7 +765,6 @@
                     }
                 }
 
-                // 2. データベースから資材レコードを削除
                 const { error } = await db.from('shizai_stocks').delete().eq('id', id);
                 if (error) throw error;
 
