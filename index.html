@@ -3,20 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!-- 🌟 ページタイトルを修正 -->
     <title>患者用資材管理ページ</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        /* タップ時の青い選択ハイライトを消してスマホでの操作感を向上 */
-        .cursor-pointer, .header-title-btn { -webkit-tap-highlight-color: transparent; }
+        .cursor-pointer, .header-title-btn, .page-btn { -webkit-tap-highlight-color: transparent; }
     </style>
 </head>
 <body class="bg-gray-100 min-h-screen text-gray-800 font-sans pb-12">
 
     <header class="bg-blue-600 text-white p-4 sticky top-0 z-50 shadow-md">
         <div class="container mx-auto flex justify-between items-center max-w-md">
-            <!-- 🌟 トップを「患者用資材管理」に修正し、タップで全表示に戻るリンク機能を実装 -->
             <h1 onclick="resetToAllDrugs()" class="text-xl font-bold cursor-pointer active:opacity-80 transition header-title-btn select-none" title="全資材一覧を表示">
                 患者用資材管理
             </h1>
@@ -54,7 +51,6 @@
                     <input type="text" id="input-shizai" placeholder="例：患者用説明資材、保冷バッグ" class="w-full p-2 border rounded-lg outline-none">
                 </div>
                 
-                <!-- 在庫数エリア -->
                 <div class="grid grid-cols-2 gap-2">
                     <div>
                         <label class="block text-gray-600 font-medium mb-1">初期在庫数</label>
@@ -66,13 +62,11 @@
                     </div>
                 </div>
 
-                <!-- 内訳・備考エリアを複数行入力可能な textarea -->
                 <div class="mt-3">
                     <label class="block text-gray-600 font-medium mb-1">内訳・備考（※改行して箇条書きOK）</label>
-                    <textarea id="input-contents" rows="3" placeholder="例：&#13;・保冷バッグ・廃棄袋同梱&#13;・メーカー提供終了（次回から代替品）&#13;・次回発注時に数量注意" class="w-full p-3 border rounded-lg outline-none text-sm bg-white resize-none"></textarea>
+                    <textarea id="input-contents" rows="3" placeholder="例：&#13;・保冷バッグ・廃棄袋同梱" class="w-full p-3 border rounded-lg outline-none text-sm bg-white resize-none"></textarea>
                 </div>
 
-                <!-- 📸 カメラ起動・画像アップロードエリア -->
                 <div class="mt-3 bg-gray-50 p-2.5 rounded-lg border border-dashed border-gray-300">
                     <label class="block text-gray-600 font-bold text-xs mb-1">📸 資材の写真を追加（※任意）</label>
                     <div class="flex items-center space-x-2">
@@ -86,7 +80,7 @@
                 </div>
 
                 <div class="border-t pt-2 mt-2 space-y-2 bg-gray-50 p-2 rounded-lg">
-                    <label class="block text-gray-700 font-bold text-xs">📦 発注先の設定（ある方だけ入力、両方も可）</label>
+                    <label class="block text-gray-700 font-bold text-xs">📦 発注先の設定</label>
                     <div id="add-field-online" class="border-b pb-2 mb-2">
                         <label class="block text-green-700 text-xs font-bold mb-0.5">💻 オンライン発注URL</label>
                         <input type="url" id="input-order-url" placeholder="https://..." class="w-full p-1.5 border rounded bg-white">
@@ -116,25 +110,35 @@
 
         <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 mb-4 space-y-3">
             <div>
-                <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">表示する対象薬品を選択</label>
+                <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">キーワード検索（資材名・薬品名）</label>
                 <div class="relative">
-                    <select id="drug-filter" onchange="filterSelectorChanged()" class="w-full p-3 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 outline-none font-bold text-gray-700 appearance-none">
-                        <option value="ALL">ーー 全ての薬品を表示 ーー</option>
-                    </select>
-                    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-500">▼</div>
+                    <input type="text" id="search-input" oninput="handleSearchInput()" placeholder="検索したいキーワードを入力..." class="w-full p-3 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 outline-none text-sm font-medium text-gray-700">
+                    <button id="search-clear-btn" onclick="clearSearchInput()" class="absolute inset-y-0 right-0 px-3 flex items-center text-gray-400 hover:text-gray-600 hidden">✕</button>
                 </div>
             </div>
 
-            <div>
-                <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">並び替え（※要発注・取り寄せ中は常に最上位）</label>
-                <div class="relative">
-                    <select id="sort-selector" onchange="renderStockList()" class="w-full p-2.5 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 outline-none text-sm font-medium text-gray-700 appearance-none">
-                        <option value="default">標準（最終更新が新しい順）</option>
-                        <option value="shizai_asc">資材名称（あいうえお順）</option>
-                        <option value="stock_asc">現在在庫（少ない順）</option>
-                        <option value="sort_desc">現在在庫（多い順）</option>
-                    </select>
-                    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-500">▼</div>
+            <div class="grid grid-cols-2 gap-2">
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">対象薬品フィルター</label>
+                    <div class="relative">
+                        <select id="drug-filter" onchange="filterSelectorChanged()" class="w-full p-2.5 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 outline-none text-xs font-bold text-gray-700 appearance-none">
+                            <option value="ALL">全ての薬品</option>
+                        </select>
+                        <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-gray-500 text-xs">▼</div>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">並び替え</label>
+                    <div class="relative">
+                        <select id="sort-selector" onchange="handleSortChanged()" class="w-full p-2.5 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 outline-none text-xs font-medium text-gray-700 appearance-none">
+                            <option value="default">標準（更新順）</option>
+                            <option value="shizai_asc">名称（五十音順）</option>
+                            <option value="stock_asc">在庫（少ない順）</option>
+                            <option value="stock_desc">在庫（多い順）</option>
+                        </select>
+                        <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-gray-500 text-xs">▼</div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -142,8 +146,21 @@
         <hr class="border-gray-300 my-4">
 
         <h2 id="list-title" class="font-bold text-lg mb-3 text-gray-700">資材一覧</h2>
+        
         <div id="stock-list" class="space-y-2">
             <p class="text-center text-gray-500 py-8">データを読み込み中...</p>
+        </div>
+
+        <div id="pagination-panel" class="mt-5 flex justify-between items-center bg-white p-2.5 rounded-xl border shadow-sm text-sm hidden">
+            <button id="prev-page-btn" onclick="changePage(-1)" class="bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-700 font-bold py-1.5 px-3 rounded-lg transition disabled:opacity-40 page-btn">
+                ◀ 前へ
+            </button>
+            <span id="page-info" class="font-bold text-gray-600 select-none">
+                1 / 1 ページ
+            </span>
+            <button id="next-page-btn" onclick="changePage(1)" class="bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-700 font-bold py-1.5 px-3 rounded-lg transition disabled:opacity-40 page-btn">
+                次へ ▶
+            </button>
         </div>
     </main>
 
@@ -159,6 +176,11 @@
         let selectedDrugFilter = "ALL";
         let openedCardId = null;
 
+        // 🌟 ページネーションと検索用のグローバル状態管理変数
+        let searchQuery = "";
+        let currentPage = 1;
+        const ITEMS_PER_PAGE = 10; // 1ページあたりの表示件数
+
         document.addEventListener("DOMContentLoaded", fetchStocks);
 
         function toggleAddForm() {
@@ -166,20 +188,78 @@
             form.classList.toggle("hidden");
         }
 
-        // 🌟 タイトルタップ時にすべての薬品表示（初期状態）に戻す関数
+        // 🌟 キーワード入力時の処理（インクリメンタルサーチ）
+        function handleSearchInput() {
+            const input = document.getElementById("search-input");
+            searchQuery = input.value.trim();
+            
+            // ✕（クリア）ボタンの表示制御
+            const clearBtn = document.getElementById("search-clear-btn");
+            if (searchQuery.length > 0) {
+                clearBtn.classList.remove("hidden");
+            } else {
+                clearBtn.classList.add("hidden");
+            }
+            
+            // 検索内容が変わったら1ページ目に戻して再描画
+            currentPage = 1;
+            renderStockList();
+        }
+
+        // 🌟 検索キーワードのクリア
+        function clearSearchInput() {
+            document.getElementById("search-input").value = "";
+            searchQuery = "";
+            document.getElementById("search-clear-btn").classList.add("hidden");
+            currentPage = 1;
+            renderStockList();
+        }
+
+        // 🌟 ページを切り替える関数
+        function changePage(direction) {
+            currentPage += direction;
+            // ページ切り替え時は、アコーディオンで開いていたカードを閉じる
+            openedCardId = null;
+            renderStockList();
+            // 画面上部にスムーズにスクロールさせる（資材一覧のタイトル付近へ）
+            document.getElementById("list-title").scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        // 並び替えやフィルターが変更された時もページを1に戻す
+        function filterSelectorChanged() {
+            selectedDrugFilter = document.getElementById("drug-filter").value;
+            currentPage = 1;
+            renderStockList();
+        }
+
+        function handleSortChanged() {
+            currentPage = 1;
+            renderStockList();
+        }
+
+        // トップタイトルをタップした時のリセット機能（検索文字もクリアするように拡張）
         function resetToAllDrugs() {
             selectedDrugFilter = "ALL";
             const filterElement = document.getElementById("drug-filter");
-            if (filterElement) {
-                filterElement.value = "ALL";
-            }
-            renderStockList();
+            if (filterElement) filterElement.value = "ALL";
             
-            // もし追加フォームが開いていたらついでに閉じてスッキリさせる
+            // 検索条件もリセット
+            clearSearchInput();
+            
             const form = document.getElementById("add-form-section");
             if (form && !form.classList.contains("hidden")) {
                 form.classList.add("hidden");
             }
+        }
+
+        // カナ変換などの補助関数（インクリメンタルサーチの精度向上用）
+        function normalizeString(str) {
+            if (!str) return "";
+            return str.toLowerCase()
+                .normalize("NFKC") // 全角英数を半角、かつ濁点などを結合
+                .replace(/[\u30a1-\u30f6]/g, function(match) {
+                    return String.fromCharCode(match.charCodeAt(0) - 0x60); // カタカナをひらがなに変換
+                });
         }
 
         function toggleDetails(id) {
@@ -366,13 +446,9 @@
                 toggleAddForm();
                 
                 selectedDrugFilter = drug; 
+                currentPage = 1;
                 fetchStocks();
             }
-        }
-
-        function filterSelectorChanged() {
-            selectedDrugFilter = document.getElementById("drug-filter").value;
-            renderStockList();
         }
 
         async function fetchStocks() {
@@ -406,7 +482,7 @@
         function updateDrugFilterOptions() {
             const filterElement = document.getElementById("drug-filter");
             const drugNames = [...new Set(currentStocksData.map(item => item.drug_name))];
-            filterElement.innerHTML = `<option value="ALL">ーー 全ての薬品を表示 ーー</option>`;
+            filterElement.innerHTML = `<option value="ALL">全ての薬品</option>`;
             drugNames.forEach(name => {
                 const selectedAttr = (name === selectedDrugFilter) ? "selected" : "";
                 filterElement.innerHTML += `<option value="${name}" ${selectedAttr}>${name}</option>`;
@@ -432,6 +508,7 @@
             const alertSection = document.getElementById("alert-section");
             const alertListElement = document.getElementById("alert-list");
             const listTitleElement = document.getElementById("list-title");
+            const paginationPanel = document.getElementById("pagination-panel");
 
             stockListElement.innerHTML = "";
             alertListElement.innerHTML = "";
@@ -440,22 +517,18 @@
             if (currentStocksData.length === 0) {
                 stockListElement.innerHTML = `<p class="text-center text-gray-500 py-8">資材が登録されていません。右上の「➕資材追加」から登録してください。</p>`;
                 alertSection.classList.add("hidden");
+                paginationPanel.classList.add("hidden");
                 return;
             }
 
+            // タイトル文字の生成
             if (selectedDrugFilter === "ALL") {
-                listTitleElement.innerText = "全資材一覧";
+                listTitleElement.innerText = searchQuery ? `検索結果一覧` : "全資材一覧";
             } else {
                 listTitleElement.innerText = `「${selectedDrugFilter}」の資材一覧`;
             }
 
-            let filteredItems = currentStocksData.filter(item => {
-                if (selectedDrugFilter !== "ALL" && item.drug_name !== selectedDrugFilter) {
-                    return false;
-                }
-                return true;
-            });
-
+            // アラート用データの収集（これは検索・フィルターに関わらず全体から警告）
             currentStocksData.forEach(item => {
                 const isShortage = item.current_stock < item.min_stock;
                 if (isShortage && !item.is_ordering) {
@@ -468,6 +541,26 @@
                 }
             });
 
+            // 🌟 1. フィルター と 検索窓（インクリメンタルサーチ）によるデータ絞り込み
+            let filteredItems = currentStocksData.filter(item => {
+                // 薬品プルダウンフィルター
+                if (selectedDrugFilter !== "ALL" && item.drug_name !== selectedDrugFilter) {
+                    return false;
+                }
+                
+                // キーワード検索窓フィルター
+                if (searchQuery) {
+                    const normalizedQuery = normalizeString(searchQuery);
+                    const matchShizai = normalizeString(item.shizai_name).includes(normalizedQuery);
+                    const matchDrug = normalizeString(item.drug_name).includes(normalizedQuery);
+                    if (!matchShizai && !matchDrug) {
+                        return false;
+                    }
+                }
+                return true;
+            });
+
+            // 2. 並び替えロジック
             const sortMethod = document.getElementById("sort-selector").value;
             filteredItems.sort((a, b) => {
                 const aIsUrgent = (a.is_ordering || (a.current_stock < a.min_stock)) ? 1 : 0;
@@ -490,7 +583,34 @@
                 return bTime - aTime;
             });
 
-            filteredItems.forEach(item => {
+            // 🌟 3. ページネーション計算
+            const totalItems = filteredItems.length;
+            const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE) || 1;
+            
+            // 安全策：現在のページが最大ページを超えていたら丸める
+            if (currentPage > totalPages) currentPage = totalPages;
+            if (currentPage < 1) currentPage = 1;
+
+            // 今回のページに表示する分だけを切り出す
+            const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+            const endIndex = startIndex + ITEMS_PER_PAGE;
+            const pageItems = filteredItems.slice(startIndex, endIndex);
+
+            // ページ情報の表示アップデート
+            if (totalItems > 0) {
+                document.getElementById("page-info").innerText = `${currentPage} / ${totalPages} ページ (${totalItems}件中 ${startIndex + 1}〜${Math.min(endIndex, totalItems)}件)`;
+                paginationPanel.classList.remove("hidden");
+                document.getElementById("prev-page-btn").disabled = (currentPage === 1);
+                document.getElementById("next-page-btn").disabled = (currentPage === totalPages);
+            } else {
+                stockListElement.innerHTML = `<p class="text-center text-gray-500 py-8">該当する資材が見つかりません。</p>`;
+                paginationPanel.classList.add("hidden");
+                if (hasAlert) { alertSection.classList.remove("hidden"); } else { alertSection.classList.add("hidden"); }
+                return;
+            }
+
+            // カードの生成ループ（切り出した pageItems のみ描画）
+            pageItems.forEach(item => {
                 const isShortage = item.current_stock < item.min_stock;
 
                 if (editingId === item.id) {
@@ -857,7 +977,6 @@
         }
     </script>
     
-    <!-- ポップアップコンポーネント -->
     <div id="info-popup" class="fixed inset-0 bg-black bg-opacity-60 z-50 flex items-center justify-center p-4 hidden" onclick="closeInfoPopup()">
         <div class="bg-white rounded-2xl max-w-sm w-full p-5 shadow-2xl transform transition-all space-y-2.5" onclick="event.stopPropagation();">
             
