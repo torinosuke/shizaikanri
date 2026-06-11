@@ -62,8 +62,8 @@
                 </div>
 
                 <div class="mt-3">
-                    <label class="block text-gray-600 font-medium mb-1">内訳・備考（※空欄でもOK）</label>
-                    <input type="text" id="input-contents" placeholder="例：保冷バッグ・廃棄袋同梱、現在提供終了、など" class="w-full p-3 border rounded-lg outline-none text-sm bg-white">
+                    <label class="block text-gray-600 font-medium mb-1">内訳・備考（※改行して箇条書きOK）</label>
+                    <textarea id="input-contents" rows="3" placeholder="例：&#13;・保冷バッグ・廃棄袋同梱&#13;・メーカー提供終了（次回から代替品）&#13;・次回発注時に数量注意" class="w-full p-3 border rounded-lg outline-none text-sm bg-white resize-none"></textarea>
                 </div>
 
                 <div class="mt-3 bg-gray-50 p-2.5 rounded-lg border border-dashed border-gray-300">
@@ -216,7 +216,6 @@
             const filePath = `shizai_pics/${fileName}`;
 
             try {
-                // もし「編集モード」で、かつ既に古い写真が存在する場合は、先にStorageから古いファイルを自動削除
                 if (mode === 'edit' && id) {
                     const targetItem = currentStocksData.find(item => item.id === id);
                     if (targetItem && targetItem.image_url) {
@@ -227,7 +226,6 @@
                     }
                 }
 
-                // 新しい画像をアップロード
                 const { data, error } = await db.storage
                     .from('shizai-images')
                     .upload(filePath, file);
@@ -242,7 +240,6 @@
                 statusLabel.innerText = "✅ アップロード完了";
                 statusLabel.className = "text-xxs text-green-600 font-bold";
 
-                // 🌟 新設：編集モード時は即座に「写真削除ボタン」を表示可能にするため、DOMの非表示クラスをコントロール
                 const deleteBtn = document.getElementById(`btn-delete-image-${id}`);
                 if (deleteBtn) deleteBtn.classList.remove("hidden");
 
@@ -254,7 +251,6 @@
             }
         }
 
-        // 🌟 新設：資材データは残したまま、アップロードされている写真だけを即時削除する処理
         async function deleteImageOnly(id) {
             const urlHiddenInput = document.getElementById(`edit-image-url-${id}`);
             const statusLabel = document.getElementById(`edit-upload-status-${id}`);
@@ -269,7 +265,6 @@
             statusLabel.className = "text-xxs text-orange-600 font-bold";
 
             try {
-                // 1. Storageから画像の実体を削除
                 const storagePath = extractStoragePath(currentUrl);
                 if (storagePath) {
                     const { error: storageError } = await db.storage
@@ -278,14 +273,10 @@
                     if (storageError) console.warn("Storageからの削除に失敗しました（処理は継続します）:", storageError.message);
                 }
 
-                // 2. 編集フォーム内の隠しURLを空文字にする
                 urlHiddenInput.value = "";
-                
-                // 3. 画面のラベル表示を更新
                 statusLabel.innerText = "🗑️ 写真を削除しました（未保存）";
                 statusLabel.className = "text-xxs text-red-500 font-bold";
                 
-                // 4. ボタン自体を隠す
                 if (deleteBtn) deleteBtn.classList.add("hidden");
 
             } catch (err) {
@@ -482,7 +473,6 @@
                 const isShortage = item.current_stock < item.min_stock;
 
                 if (editingId === item.id) {
-                    // 🌟 変更点：写真がある場合だけ「削除ボタン」を表示するためのクラス切り替え判定
                     const hasPhoto = item.image_url && item.image_url.trim() !== "";
 
                     const editCardHtml = `
@@ -506,9 +496,10 @@
                                     <input type="number" id="edit-min-${item.id}" value="${item.min_stock}" min="0" class="w-full p-1.5 border rounded">
                                 </div>
                             </div>
+                            
                             <div>
                                 <label class="block text-xs text-gray-500 mb-0.5">内訳・備考</label>
-                                <input type="text" id="edit-contents-${item.id}" value="${item.contents || ''}" placeholder="内訳など" class="w-full p-1.5 border rounded text-xs">
+                                <textarea id="edit-contents-${item.id}" rows="3" placeholder="内訳など" class="w-full p-1.5 border rounded text-xs resize-none">${item.contents || ''}</textarea>
                             </div>
                             
                             <div class="bg-white p-2 rounded border border-gray-200">
@@ -752,7 +743,7 @@
         async function deleteShizai(id) {
             const targetItem = currentStocksData.find(item => item.id === id);
             const nameForConfirm = targetItem ? `${targetItem.drug_name}の${targetItem.shizai_name}` : "この資材";
-            if (!confirm(`【確認】\n「${nameForConfirm}」の登録を完全に削除しますか？\n（礼服・撮影した写真データも自動で一緒に削除されます）`)) return;
+            if (!confirm(`【確認】\n「${nameForConfirm}」の登録を完全に削除しますか？\n（撮影した写真データも自動で一緒に削除されます）`)) return;
 
             try {
                 if (targetItem && targetItem.image_url) {
