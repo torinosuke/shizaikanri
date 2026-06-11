@@ -3,19 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>抗リウマチ薬 バイオ資材在庫管理</title>
+    <!-- 🌟 ページタイトルを修正 -->
+    <title>患者用資材管理ページ</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         /* タップ時の青い選択ハイライトを消してスマホでの操作感を向上 */
-        .cursor-pointer { -webkit-tap-highlight-color: transparent; }
+        .cursor-pointer, .header-title-btn { -webkit-tap-highlight-color: transparent; }
     </style>
 </head>
 <body class="bg-gray-100 min-h-screen text-gray-800 font-sans pb-12">
 
     <header class="bg-blue-600 text-white p-4 sticky top-0 z-50 shadow-md">
         <div class="container mx-auto flex justify-between items-center max-w-md">
-            <h1 class="text-xl font-bold">バイオ資材管理</h1>
+            <!-- 🌟 トップを「患者用資材管理」に修正し、タップで全表示に戻るリンク機能を実装 -->
+            <h1 onclick="resetToAllDrugs()" class="text-xl font-bold cursor-pointer active:opacity-80 transition header-title-btn select-none" title="全資材一覧を表示">
+                患者用資材管理
+            </h1>
             <div class="flex space-x-2">
                 <button onclick="toggleAddForm()" class="bg-blue-500 hover:bg-blue-400 px-3 py-1 rounded text-sm font-bold transition">
                     ➕ 資材追加
@@ -50,6 +54,7 @@
                     <input type="text" id="input-shizai" placeholder="例：患者用説明資材、保冷バッグ" class="w-full p-2 border rounded-lg outline-none">
                 </div>
                 
+                <!-- 在庫数エリア -->
                 <div class="grid grid-cols-2 gap-2">
                     <div>
                         <label class="block text-gray-600 font-medium mb-1">初期在庫数</label>
@@ -61,11 +66,13 @@
                     </div>
                 </div>
 
+                <!-- 内訳・備考エリアを複数行入力可能な textarea -->
                 <div class="mt-3">
                     <label class="block text-gray-600 font-medium mb-1">内訳・備考（※改行して箇条書きOK）</label>
                     <textarea id="input-contents" rows="3" placeholder="例：&#13;・保冷バッグ・廃棄袋同梱&#13;・メーカー提供終了（次回から代替品）&#13;・次回発注時に数量注意" class="w-full p-3 border rounded-lg outline-none text-sm bg-white resize-none"></textarea>
                 </div>
 
+                <!-- 📸 カメラ起動・画像アップロードエリア -->
                 <div class="mt-3 bg-gray-50 p-2.5 rounded-lg border border-dashed border-gray-300">
                     <label class="block text-gray-600 font-bold text-xs mb-1">📸 資材の写真を追加（※任意）</label>
                     <div class="flex items-center space-x-2">
@@ -159,6 +166,22 @@
             form.classList.toggle("hidden");
         }
 
+        // 🌟 タイトルタップ時にすべての薬品表示（初期状態）に戻す関数
+        function resetToAllDrugs() {
+            selectedDrugFilter = "ALL";
+            const filterElement = document.getElementById("drug-filter");
+            if (filterElement) {
+                filterElement.value = "ALL";
+            }
+            renderStockList();
+            
+            // もし追加フォームが開いていたらついでに閉じてスッキリさせる
+            const form = document.getElementById("add-form-section");
+            if (form && !form.classList.contains("hidden")) {
+                form.classList.add("hidden");
+            }
+        }
+
         function toggleDetails(id) {
             const panel = document.getElementById(`control-panel-${id}`);
             const arrow = document.getElementById(`arrow-${id}`);
@@ -193,13 +216,11 @@
             }
         }
 
-        // URLからStorage内の相対ファイルパスを逆引き抽出するヘルパー関数
         function extractStoragePath(url) {
             if (!url || !url.includes('/storage/v1/object/public/shizai-images/')) return null;
             return url.split('/storage/v1/object/public/shizai-images/')[1];
         }
 
-        // 📸 カメラ・ファイルから画像を選んだときのアップロード処理
         async function uploadImageHandler(mode, id = null) {
             const fileInput = mode === 'add' ? document.getElementById('input-image-file') : document.getElementById(`edit-image-file-${id}`);
             const statusLabel = mode === 'add' ? document.getElementById('add-upload-status') : document.getElementById(`edit-upload-status-${id}`);
@@ -836,6 +857,7 @@
         }
     </script>
     
+    <!-- ポップアップコンポーネント -->
     <div id="info-popup" class="fixed inset-0 bg-black bg-opacity-60 z-50 flex items-center justify-center p-4 hidden" onclick="closeInfoPopup()">
         <div class="bg-white rounded-2xl max-w-sm w-full p-5 shadow-2xl transform transition-all space-y-2.5" onclick="event.stopPropagation();">
             
