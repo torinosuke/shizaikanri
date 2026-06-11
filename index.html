@@ -34,6 +34,7 @@
             <strong>⚠️ 接続エラー:</strong> <p id="error-text" class="mt-1"></p>
         </div>
 
+        <!-- 資材追加フォーム -->
         <div id="add-form-section" class="mb-6 bg-white p-4 rounded-xl shadow-md border border-blue-200 hidden">
             <h2 class="text-blue-700 font-bold text-base mb-3 flex justify-between items-center">
                 <span>新しく資材を登録する</span>
@@ -108,6 +109,7 @@
             <div id="alert-list" class="space-y-2"></div>
         </div>
 
+        <!-- 🔍 検索・並び替え・フィルターエリア -->
         <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 mb-4 space-y-3">
             <div>
                 <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">キーワード検索（資材名・薬品名）</label>
@@ -147,10 +149,12 @@
 
         <h2 id="list-title" class="font-bold text-lg mb-3 text-gray-700">資材一覧</h2>
         
+        <!-- 資材リスト本体 -->
         <div id="stock-list" class="space-y-2">
             <p class="text-center text-gray-500 py-8">データを読み込み中...</p>
         </div>
 
+        <!-- ページネーション操作パネル -->
         <div id="pagination-panel" class="mt-5 flex justify-between items-center bg-white p-2.5 rounded-xl border shadow-sm text-sm hidden">
             <button id="prev-page-btn" onclick="changePage(-1)" class="bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-700 font-bold py-1.5 px-3 rounded-lg transition disabled:opacity-40 page-btn">
                 ◀ 前へ
@@ -467,7 +471,10 @@
 
         function updateDrugFilterOptions() {
             const filterElement = document.getElementById("drug-filter");
-            const drugNames = [...new Set(currentStocksData.map(item => item.drug_name))];
+            // 🌟 【変更点】薬品名を重複排除したあと、あいうえお（五十音）順にソート
+            const drugNames = [...new Set(currentStocksData.map(item => item.drug_name))]
+                .sort((a, b) => a.localeCompare(b, 'ja'));
+
             filterElement.innerHTML = `<option value="ALL">全ての薬品</option>`;
             drugNames.forEach(name => {
                 const selectedAttr = (name === selectedDrugFilter) ? "selected" : "";
@@ -482,7 +489,10 @@
         function updateAddFormDrugOptions() {
             const selectElement = document.getElementById("input-drug-select");
             if (!selectElement) return;
-            const drugNames = [...new Set(currentStocksData.map(item => item.drug_name))];
+            // 🌟 【変更点】追加フォーム内の薬品選択肢もあいうえお（五十音）順にソート
+            const drugNames = [...new Set(currentStocksData.map(item => item.drug_name))]
+                .sort((a, b) => a.localeCompare(b, 'ja'));
+
             let html = `<option value="">ーー 選択してください ーー</option>`;
             drugNames.forEach(name => { html += `<option value="${name}">${name}</option>`; });
             html += `<option value="__NEW__">➕ 新しい薬品を追加（直接入力）...</option>`;
@@ -878,8 +888,6 @@
                 alert("修正保存エラー: " + error.message);
             } else {
                 editingId = null;
-                // 🌟 【変更点】selectedDrugFilter = nextDrug; を削除！
-                // これにより、全資材一覧や検索中の画面状態を完全に維持したまま再描画します。
                 fetchStocks(); 
             }
         }
@@ -913,6 +921,7 @@
         }
     </script>
     
+    <!-- ポップアップコンポーネント -->
     <div id="info-popup" class="fixed inset-0 bg-black bg-opacity-60 z-50 flex items-center justify-center p-4 hidden" onclick="closeInfoPopup()">
         <div class="bg-white rounded-2xl max-w-sm w-full p-5 shadow-2xl space-y-2.5" onclick="event.stopPropagation();">
             <div class="flex justify-between items-center border-b pb-1.5">
