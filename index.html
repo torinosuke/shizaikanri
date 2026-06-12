@@ -184,7 +184,7 @@
             </div>
             <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
                 <h3 class="font-bold text-sm text-gray-700 mb-3 text-center">📊 資材別 消費数（払い出し数）ランキング</h3>
-                <div class="relative w-full h-72">
+                <div class="relative w-full h-80">
                     <canvas id="consumptionChart"></canvas>
                 </div>
                 <p id="chart-empty-message" class="text-center text-gray-400 text-sm py-12 hidden">指定期間内の払い出しデータがありません。</p>
@@ -659,7 +659,16 @@
                                 <button onclick="updateStock(${item.id}, ${item.current_stock - 1})" class="bg-gray-800 text-white text-xs font-bold py-2 rounded-lg" ${item.current_stock <= 0 ? 'disabled opacity-50' : ''}>払い出し (-1)</button>
                                 <button onclick="toggleOrderStatus(${item.id}, ${item.is_ordering})" class="${item.is_ordering ? 'bg-gray-400' : 'bg-yellow-500'} text-white text-xs font-bold py-2 rounded-lg}">${item.is_ordering ? '取り寄せ取消' : '取り寄せ中に変更'}</button>
                             </div>
-                            ${item.is_ordering ? `<div class="flex items-center space-x-2 pt-1 border-t border-dashed border-gray-200"><select id="arrival-count-${item.id}" class="w-16 p-1 border rounded text-sm"><option value="1">1</option><option value="5" selected>5</option><option value="10">10</option></select><button onclick="executeArrival(${item.id}, ${item.current_stock})" class="flex-1 bg-green-600 text-white text-xs font-bold py-1.5 rounded-lg">入荷完了</button></div>` : ''}
+                            
+                            ${item.is_ordering ? `
+                            <div class="flex items-center space-x-2 pt-1 border-t border-dashed border-gray-200">
+                                <div class="flex items-center border rounded bg-white">
+                                    <span class="text-xxs font-bold px-1.5 text-gray-400 select-none">数量:</span>
+                                    <input type="number" id="arrival-count-${item.id}" value="1" min="1" class="w-16 p-1 text-sm font-bold text-center outline-none">
+                                </div>
+                                <button onclick="executeArrival(${item.id}, ${item.current_stock})" class="flex-1 bg-green-600 text-white text-xs font-bold py-2 rounded-lg shadow-sm">入荷完了</button>
+                            </div>` : ''}
+                            
                             <div class="flex justify-between items-center text-xs text-gray-400 pt-1.5 border-t border-dashed border-gray-100">
                                 <span>⏱️ 更新: ${item.updated_at ? new Date(item.updated_at).toLocaleDateString('ja-JP', {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'}) : '---'}</span>
                                 <div class="flex space-x-3"><button onclick="enterEditMode(${item.id})" class="hover:text-blue-600">✏️ 編集</button><button onclick="deleteShizai(${item.id})" class="hover:text-red-500">🗑️ 削除</button></div>
@@ -729,7 +738,7 @@
         function enterEditMode(id) { editingId = id; renderStockList(); } 
         function cancelEdit() { editingId = null; renderStockList(); } 
 
-        // 編集画面からの保存 (棚卸調整となるためログには含めません)
+        // 編集画面からの保存
         async function saveEdit(id) { 
             const drug = document.getElementById(`edit-drug-${id}`).value; 
             const shizai = document.getElementById(`edit-shizai-${id}`).value; 
@@ -743,7 +752,7 @@
             editingId = null; fetchStocks(); 
         }
 
-        // ================= 履歴管理のロジック（閲覧専用に変更） =================
+        // ================= 履歴管理のロジック =================
         async function fetchLogs() {
             const listEl = document.getElementById("logs-list");
             try {
@@ -790,23 +799,20 @@
             });
         }
 
-        // ================= 消費グラフのロジック（カレンダー連携） =================
+        // ================= 消費グラフのロジック =================
         async function fetchChartData() {
             const canvas = document.getElementById("consumptionChart");
             const emptyMsg = document.getElementById("chart-empty-message");
             
-            // カレンダーから日付を取得
             const startDateStr = document.getElementById("chart-date-start").value;
             const endDateStr = document.getElementById("chart-date-end").value;
 
             if (!startDateStr || !endDateStr) return;
 
             try {
-                // Supabaseクエリ用に時間表記を調整 (開始日の00:00:00 〜 終了日の23:59:59)
                 const startIso = new Date(`${startDateStr}T00:00:00`).toISOString();
                 const endIso = new Date(`${endDateStr}T23:59:59`).toISOString();
 
-                // 払い出し('dispense')データのみを取得
                 const { data: logs, error } = await db.from('shizai_logs')
                     .select('shizai_name, drug_name, quantity')
                     .eq('type', 'dispense')
@@ -818,16 +824,20 @@
                 // データを「薬品名 + 資材名」単位で集計
                 const summaryMap = {};
                 (logs || []).forEach(log => {
-                    const label = `${log.drug_name}\n(${log.shizai_name})`;
+                    // 【修正】Chart.jsで2行に改行して配置させるため、一意の識別キーを生成
+                    const compositeKey = `${log.drug_name}::${log.shizai_name}`;
                     const count = Math.abs(log.quantity);
-                    summaryMap[label] = (summaryMap[label] || 0) + count;
+                    summaryMap[compositeKey] = (summaryMap[compositeKey] || 0) + count;
                 });
 
-                // 配列に変換してソート
-                const sortedData = Object.keys(summaryMap).map(key => ({
-                    label: key,
-                    value: summaryMap[key]
-                })).sort((a, b) => b.value - a.value);
+                const sortedData = Object.keys(summaryMap).map(key => {
+                    const [drug, shizai] = key.split('::');
+                    return {
+                        // 【修正】配列で指定することでChart.jsが自動的に「上が1行目(薬品名)、下が2行目(資材名)」として改行レンダリングします
+                        label: [drug, `(${shizai})`],
+                        value: summaryMap[key]
+                    };
+                }).sort((a, b) => b.value - a.value);
 
                 if (sortedData.length === 0) {
                     if (myChart) myChart.destroy();
@@ -839,7 +849,6 @@
                 canvas.classList.remove("hidden");
                 emptyMsg.classList.add("hidden");
 
-                // 上位最大10件を表示
                 const topItems = sortedData.slice(0, 10);
                 const chartLabels = topItems.map(i => i.label);
                 const chartValues = topItems.map(i => i.value);
@@ -875,9 +884,14 @@
                             y: {
                                 ticks: {
                                     font: { size: 10, weight: 'bold' },
-                                    color: '#374151'
+                                    color: '#374151',
+                                    autoSkip: false // ラベルをすべて強制表示
                                 }
                             }
+                        },
+                        layout: {
+                            // 横幅の狭いスマホ画面でも文字がはみ出さないように左側に少し余裕を持たせます
+                            padding: { left: 10, right: 10 }
                         }
                     }
                 });
