@@ -30,6 +30,20 @@
         </div>
     </header>
 
+    <div class="bg-white border-b border-gray-200 sticky top-14 z-40 shadow-sm">
+        <div class="container mx-auto max-w-md flex justify-around text-sm font-bold">
+            <button id="tab-btn-stock" onclick="switchTab('stock')" class="w-full py-3 text-center border-b-2 border-blue-600 text-blue-600 transition">
+                📦 資材一覧
+            </button>
+            <button id="tab-btn-history" onclick="switchTab('history')" class="w-full py-3 text-center border-b-2 border-transparent text-gray-500 hover:text-gray-700 transition">
+                📋 入出庫履歴
+            </button>
+            <button id="tab-btn-graph" onclick="switchTab('graph')" class="w-full py-3 text-center border-b-2 border-transparent text-gray-500 hover:text-gray-700 transition">
+                📊 消費グラフ
+            </button>
+        </div>
+    </div>
+
     <main class="container mx-auto p-4 max-w-md">
         
         <div id="error-message" class="mb-4 bg-orange-100 border-l-4 border-orange-500 text-orange-700 p-3 rounded text-sm hidden">
@@ -101,11 +115,6 @@
             </div>
         </div>
 
-        <div id="alert-section" class="mb-4 hidden">
-            <h2 class="text-red-600 font-bold text-sm mb-2">⚠️ 発注が必要な資材（院内全体）</h2>
-            <div id="alert-list" class="space-y-2"></div>
-        </div>
-
         <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 mb-4 space-y-3">
             <div>
                 <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">キーワード検索（資材名・薬品名）</label>
@@ -141,19 +150,40 @@
 
         <hr class="border-gray-300 my-4">
 
-        <h2 id="list-title" class="font-bold text-lg mb-3 text-gray-700">資材一覧</h2>
-        
-        <div id="stock-list" class="space-y-2">
-            <p class="text-center text-gray-500 py-8">データを読み込み中...</p>
+        <div id="tab-section-stock" class="tab-content space-y-4">
+            <div id="alert-section" class="hidden">
+                <h2 class="text-red-600 font-bold text-sm mb-2">⚠️ 発注が必要な資材（院内全体）</h2>
+                <div id="alert-list" class="space-y-2"></div>
+            </div>
+
+            <h2 id="list-title" class="font-bold text-lg text-gray-700">資材一覧</h2>
+            <div id="stock-list" class="space-y-2">
+                <p class="text-center text-gray-500 py-8">データを読み込み中...</p>
+            </div>
+        </div>
+
+        <div id="tab-section-history" class="tab-content space-y-4 hidden">
+            <div class="flex justify-between items-center">
+                <h2 class="font-bold text-lg text-gray-700">院内入出庫履歴ログ</h2>
+                <button onclick="clearAllLogsWithConfirm()" class="text-xs text-red-500 hover:underline">履歴ログの一括クリア</button>
+            </div>
+            <div id="global-log-list" class="space-y-2 bg-white p-3 rounded-xl border text-sm max-h-[500px] overflow-y-auto">
+                <p class="text-center text-gray-500 py-4">履歴はありません。</p>
+            </div>
+        </div>
+
+        <div id="tab-section-graph" class="tab-content space-y-4 hidden">
+            <h2 class="font-bold text-lg text-gray-700">資材別 払い出し・消費状況</h2>
+            <div id="graph-list" class="space-y-4 bg-white p-4 rounded-xl border">
+                <p class="text-center text-gray-500 py-4">グラフデータを生成中...</p>
+            </div>
         </div>
 
         <div id="pagination-panel" class="mt-5 flex justify-between items-center bg-white p-2.5 rounded-xl border shadow-sm text-sm hidden">
             <button id="prev-page-btn" onclick="changePage(-1)" class="bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-700 font-bold py-1.5 px-3 rounded-lg transition disabled:opacity-40 page-btn">
                 ◀ 前へ
             </button>
-            <span id="page-info" class="font-bold text-gray-600 select-none">
-                1 / 1 ページ
-            </span>
+            <span id="page-info" class="font-bold text-gray-600 select-none">1 / 1 ページ</span>
             <button id="next-page-btn" onclick="changePage(1)" class="bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-700 font-bold py-1.5 px-3 rounded-lg transition disabled:opacity-40 page-btn">
                 次へ ▶
             </button>
@@ -168,15 +198,50 @@
         try { db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY); } catch (e) { console.error(e); }
 
         let currentStocksData = [];
+        let currentLogsData = []; // 全体ログ用配列
         let editingId = null;
         let selectedDrugFilter = "ALL";
         let openedCardId = null;
+        let currentActiveTab = "stock";
 
         let searchQuery = "";
         let currentPage = 1;
         const ITEMS_PER_PAGE = 10;
 
         document.addEventListener("DOMContentLoaded", fetchStocks);
+
+        // 🌟 タブ切り替え制御関数
+        function switchTab(tabName) {
+            currentActiveTab = tabName;
+            
+            // 全てのコンテンツセクションを隠す
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            // 選択されたセクションだけ表示
+            document.getElementById(`tab-section-${tabName}`).classList.remove('hidden');
+
+            // ボタンの装飾スタイルを初期化して適用
+            const tabs = ['stock', 'history', 'graph'];
+            tabs.forEach(t => {
+                const btn = document.getElementById(`tab-btn-${t}`);
+                if (t === tabName) {
+                    btn.className = "w-full py-3 text-center border-b-2 border-blue-600 text-blue-600 transition";
+                } else {
+                    btn.className = "w-full py-3 text-center border-b-2 border-transparent text-gray-500 hover:text-gray-700 transition";
+                }
+            });
+
+            // ページネーションは「資材一覧」タブでのみ必要なら表示する
+            const pager = document.getElementById("pagination-panel");
+            if (tabName === 'stock' && currentStocksData.length > 0) {
+                pager.classList.remove("hidden");
+            } else {
+                pager.classList.add("hidden");
+            }
+
+            // タブ特有の再描画処理
+            if (tabName === 'history') fetchAllLogs();
+            if (tabName === 'graph') renderCharts();
+        }
 
         function toggleAddForm() {
             const form = document.getElementById("add-form-section");
@@ -190,7 +255,10 @@
             if (searchQuery.length > 0) clearBtn.classList.remove("hidden");
             else clearBtn.classList.add("hidden");
             currentPage = 1;
-            renderStockList();
+            
+            if (currentActiveTab === 'stock') renderStockList();
+            else if (currentActiveTab === 'history') renderGlobalLogs();
+            else if (currentActiveTab === 'graph') renderCharts();
         }
 
         function clearSearchInput() {
@@ -198,7 +266,10 @@
             searchQuery = "";
             document.getElementById("search-clear-btn").classList.add("hidden");
             currentPage = 1;
-            renderStockList();
+            
+            if (currentActiveTab === 'stock') renderStockList();
+            else if (currentActiveTab === 'history') renderGlobalLogs();
+            else if (currentActiveTab === 'graph') renderCharts();
         }
 
         function changePage(direction) {
@@ -211,7 +282,9 @@
         function filterSelectorChanged() {
             selectedDrugFilter = document.getElementById("drug-filter").value;
             currentPage = 1;
-            renderStockList();
+            if (currentActiveTab === 'stock') renderStockList();
+            else if (currentActiveTab === 'history') renderGlobalLogs();
+            else if (currentActiveTab === 'graph') renderCharts();
         }
 
         function handleSortChanged() {
@@ -379,6 +452,7 @@
             const phoneNumber = document.getElementById("input-phone-number").value.trim();
             if (!drug || !shizai) { alert("薬品名と資材名称を入力してください。"); return; }
             
+            // `select()` を付けて挿入後に生成されたレコードのIDを取得する
             const { data, error } = await db.from('shizai_stocks').insert([{ 
                 drug_name: drug, shizai_name: shizai, current_stock: current, min_stock: min, 
                 is_ordering: false, order_type: 'hybrid', order_url: orderUrl, phone_name: phoneName, 
@@ -388,7 +462,7 @@
             if (error) {
                 alert("登録エラー: " + error.message);
             } else {
-                // 初期在庫登録時の履歴保存
+                // 🌟 初期在庫が0個より多ければ履歴に登録ログを残す
                 if (current > 0 && data && data[0]) {
                     await db.from('shizai_logs').insert([{
                         shizai_id: data[0].id,
@@ -423,7 +497,12 @@
                 currentStocksData = stocks || [];
                 updateDrugFilterOptions();
                 updateAddFormDrugOptions();
-                renderStockList();
+                
+                // 現在アクティブなタブに沿って再描画
+                if (currentActiveTab === 'stock') renderStockList();
+                else if (currentActiveTab === 'history') fetchAllLogs();
+                else if (currentActiveTab === 'graph') renderCharts();
+
             } catch (e) {
                 errorText.innerText = "通信エラー: " + e.message;
                 errorArea.classList.remove("hidden");
@@ -456,6 +535,7 @@
             selectElement.innerHTML = html;
         }
 
+        // ==================== タブ1: 資材一覧のレンダリング ====================
         function renderStockList() {
             const stockListElement = document.getElementById("stock-list");
             const alertSection = document.getElementById("alert-section");
@@ -465,6 +545,7 @@
             stockListElement.innerHTML = "";
             alertListElement.innerHTML = "";
             let hasAlert = false;
+
             if (currentStocksData.length === 0) {
                 stockListElement.innerHTML = `<p class="text-center text-gray-500 py-8">資材が登録されていません。</p>`;
                 alertSection.classList.add("hidden"); paginationPanel.classList.add("hidden"); return;
@@ -478,6 +559,7 @@
                     alertListElement.innerHTML += `<div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-2 text-sm rounded shadow-sm"><strong>${item.drug_name}</strong>: ${item.shizai_name}</div>`;
                 }
             });
+
             let filteredItems = currentStocksData.filter(item => {
                 if (selectedDrugFilter !== "ALL" && item.drug_name !== selectedDrugFilter) return false;
                 if (searchQuery) {
@@ -486,6 +568,7 @@
                 }
                 return true;
             });
+
             const sortMethod = document.getElementById("sort-selector").value;
             filteredItems.sort((a, b) => {
                 const aUrgent = (a.is_ordering || (a.current_stock < a.min_stock)) ? 1 : 0;
@@ -502,6 +585,7 @@
             if (currentPage > totalPages) currentPage = totalPages;
             const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
             const pageItems = filteredItems.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+
             if (filteredItems.length > 0) {
                 document.getElementById("page-info").innerText = `${currentPage} / ${totalPages} ページ`;
                 paginationPanel.classList.remove("hidden");
@@ -593,8 +677,8 @@
                             ${item.is_ordering ? `<div class="flex items-center space-x-2 pt-1 border-t border-dashed border-gray-200"><select id="arrival-count-${item.id}" class="w-16 p-1 border rounded text-sm"><option value="1">1</option><option value="5" selected>5</option><option value="10">10</option></select><button onclick="executeArrival(${item.id}, ${item.current_stock})" class="flex-1 bg-green-600 text-white text-xs font-bold py-1.5 rounded-lg">入荷完了</button></div>` : ''}
                             
                             <div class="pt-1 text-center">
-                                <button onclick="fetchLogs(${item.id}, '${item.shizai_name}')" class="text-xs text-blue-600 hover:underline font-bold">
-                                    📋 この資材の入出庫履歴をみる
+                                <button onclick="fetchIndividualLogs(${item.id}, '${item.shizai_name}')" class="text-xs text-blue-600 hover:underline font-bold">
+                                    📋 この資材の個別履歴をみる
                                 </button>
                             </div>
 
@@ -618,7 +702,7 @@
             if (error) {
                 alert(error.message); 
             } else {
-                // 払い出し履歴を保存
+                // 🌟 履歴ログテーブルに記録を残す
                 await db.from('shizai_logs').insert([{
                     shizai_id: id,
                     shizai_name: target.shizai_name,
@@ -644,7 +728,7 @@
             if (error) {
                 alert(error.message);
             } else {
-                // 入荷履歴を保存
+                // 🌟 入荷完了ログを記録
                 await db.from('shizai_logs').insert([{
                     shizai_id: id,
                     shizai_name: target.shizai_name,
@@ -657,15 +741,15 @@
         }
 
         async function deleteShizai(id) {
-            if (!confirm("この資材を完全に削除しますか？\n（関連する入出庫履歴もすべて消去されます）")) return;
+            if (!confirm("この資材を完全に削除しますか？\n（関連する履歴ログもすべて消去されます）")) return;
             const target = currentStocksData.find(i => i.id === id);
             if (target && target.image_url) {
                 const path = extractStoragePath(target.image_url);
                 if (path) await db.storage.from('shizai-images').remove([path]);
             }
-            // 🌟 関連する入出庫履歴(logs)を先に削除
-            await db.from('shizai_logs').delete().eq('id', id);
-            // 資材本体を削除
+            // カスケード削除として、連動するログを先にクリーンアップ
+            await db.from('shizai_logs').delete().eq('shizai_id', id);
+            // 本体削除
             await db.from('shizai_stocks').delete().eq('id', id);
             fetchStocks();
         }
@@ -685,46 +769,147 @@
             editingId = null; fetchStocks();
         }
 
-        // 🌟 履歴を取得してポップアップで表示する関数
-        async function fetchLogs(shizaiId, shizaiName) {
+        // ==================== タブ2: 全体履歴ログデータの取得と描写 ====================
+        async function fetchAllLogs() {
+            const logArea = document.getElementById("global-log-list");
+            logArea.innerHTML = `<p class="text-center text-gray-500 py-4">履歴を読み込み中...</p>`;
             try {
-                const { data: logs, error } = await db
-                    .from('shizai_logs')
-                    .select('*')
-                    .eq('shizai_id', shizaiId)
-                    .order('created_at', { ascending: false });
+                const { data: logs, error } = await db.from('shizai_logs').select('*').order('created_at', { ascending: false });
+                if (error) throw error;
+                currentLogsData = logs || [];
+                renderGlobalLogs();
+            } catch (err) {
+                logArea.innerHTML = `<p class="text-center text-red-500 py-4">読み込みエラー: ${err.message}</p>`;
+            }
+        }
 
+        function renderGlobalLogs() {
+            const logArea = document.getElementById("global-log-list");
+            logArea.innerHTML = "";
+
+            let filteredLogs = currentLogsData.filter(log => {
+                if (selectedDrugFilter !== "ALL" && log.drug_name !== selectedDrugFilter) return false;
+                if (searchQuery) {
+                    const nq = normalizeString(searchQuery);
+                    if (!normalizeString(log.shizai_name).includes(nq) && !normalizeString(log.drug_name).includes(nq)) return false;
+                }
+                return true;
+            });
+
+            if (filteredLogs.length === 0) {
+                logArea.innerHTML = `<p class="text-center text-gray-500 py-4">該当する履歴はありません。</p>`;
+                return;
+            }
+
+            filteredLogs.forEach(log => {
+                const date = new Date(log.created_at).toLocaleString('ja-JP', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+                const isPlus = log.change_amount > 0;
+                const badgeColor = isPlus ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800';
+                const amountSign = isPlus ? `+${log.change_amount}` : log.change_amount;
+
+                logArea.innerHTML += `
+                    <div class="p-2 border-b border-gray-100 flex justify-between items-start space-x-2">
+                        <div class="min-w-0 flex-1 text-left">
+                            <div class="text-xxs text-gray-400 font-medium">${log.drug_name}</div>
+                            <div class="font-bold text-gray-700 text-xs truncate">${log.shizai_name}</div>
+                            <div class="text-xxs text-gray-400 mt-0.5">${date} • <span class="font-semibold text-blue-600">${log.log_type}</span></div>
+                        </div>
+                        <span class="px-2 py-0.5 rounded text-xs font-bold ${badgeColor} flex-shrink-0">${amountSign}個</span>
+                    </div>`;
+            });
+        }
+
+        async function clearAllLogsWithConfirm() {
+            if (!confirm("全ての入出庫履歴ログを完全に消去しますか？\n（この操作は取り消せません。資材一覧の在庫数は影響を受けません）")) return;
+            try {
+                const { error } = await db.from('shizai_logs').delete().neq('id', 0); // 全削除のシミュレート
+                if (error) throw error;
+                alert("全ての履歴ログを消去しました。");
+                fetchAllLogs();
+            } catch (err) {
+                alert("削除に失敗しました: " + err.message);
+            }
+        }
+
+        // 単体用の簡易ポップアップ履歴表示
+        async function fetchIndividualLogs(shizaiId, shizaiName) {
+            try {
+                const { data: logs, error } = await db.from('shizai_logs').select('*').eq('shizai_id', shizaiId).order('created_at', { ascending: false });
                 if (error) throw error;
 
-                document.getElementById("popup-title").innerText = "📋 入出庫履歴";
+                document.getElementById("popup-title").innerText = "📋 個別入出庫履歴";
                 document.getElementById("popup-shizai-name").innerText = shizaiName;
-                document.getElementById("popup-drug-name").innerText = "直近の履歴一覧";
+                document.getElementById("popup-drug-name").innerText = "直近のアクション履歴";
                 
                 const contentsArea = document.getElementById("popup-contents");
                 contentsArea.classList.remove("hidden");
                 document.getElementById("popup-image-container").classList.add("hidden");
 
                 if (!logs || logs.length === 0) {
-                    contentsArea.innerText = "履歴データはありません。";
+                    contentsArea.innerText = "この資材の履歴データはまだありません。";
                 } else {
                     let logText = "";
                     logs.forEach(log => {
-                        const date = new Date(log.created_at).toLocaleDateString('ja-JP', {
-                            month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
-                        });
+                        const date = new Date(log.created_at).toLocaleDateString('ja-JP', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
                         const amountSign = log.change_amount > 0 ? `+${log.change_amount}` : log.change_amount;
                         logText += `・[${date}] ${log.log_type}: ${amountSign}個\n`;
                     });
                     contentsArea.innerText = logText;
                 }
-
-                // 履歴ポップアップにのみ「履歴をクリア」ボタンを追加配置可能
                 document.getElementById("info-popup").classList.remove("hidden");
             } catch (err) {
-                alert("履歴の読み込みに失敗しました: " + err.message);
+                alert("履歴の取得に失敗しました: " + err.message);
             }
         }
 
+        // ==================== タブ3: 消費グラフの生成（CSS棒グラフ） ====================
+        function renderCharts() {
+            const graphArea = document.getElementById("graph-list");
+            graphArea.innerHTML = "";
+
+            let filteredItems = currentStocksData.filter(item => {
+                if (selectedDrugFilter !== "ALL" && item.drug_name !== selectedDrugFilter) return false;
+                if (searchQuery) {
+                    const nq = normalizeString(searchQuery);
+                    if (!normalizeString(item.shizai_name).includes(nq) && !normalizeString(item.drug_name).includes(nq)) return false;
+                }
+                return true;
+            });
+
+            if (filteredItems.length === 0) {
+                graphArea.innerHTML = `<p class="text-center text-gray-500 py-4">該当するデータがありません。</p>`;
+                return;
+            }
+
+            filteredItems.forEach(item => {
+                // 最低在庫数を基準として、現在の割合を計算 (視覚的なアラート用バーグラフ)
+                const maxReference = Math.max(item.min_stock * 2.5, item.current_stock, 10);
+                const currentPercent = Math.min((item.current_stock / maxReference) * 100, 100);
+                const minPercent = Math.min((item.min_stock / maxReference) * 100, 100);
+                
+                const isShortage = item.current_stock < item.min_stock;
+                const barColor = item.is_ordering ? 'bg-yellow-400' : (isShortage ? 'bg-red-500' : 'bg-blue-500');
+
+                graphArea.innerHTML += `
+                    <div class="space-y-1 text-left border-b pb-2.5 last:border-0">
+                        <div class="flex justify-between items-baseline min-w-0">
+                            <div class="truncate pr-2">
+                                <span class="text-xxs text-gray-400 font-medium block">${item.drug_name}</span>
+                                <span class="font-bold text-xs text-gray-700">${item.shizai_name}</span>
+                            </div>
+                            <div class="text-xxs font-bold text-gray-600 flex-shrink-0">
+                                在庫: <span class="text-sm text-gray-900">${item.current_stock}</span> / 目安: ${item.min_stock}
+                            </div>
+                        </div>
+                        <div class="w-full bg-gray-100 h-4 rounded-full relative overflow-hidden shadow-inner border border-gray-200">
+                            <div class="absolute top-0 bottom-0 border-r border-dashed border-red-400 z-10" style="left: ${minPercent}%;"></div>
+                            <div class="${barColor} h-full rounded-full transition-all duration-500" style="width: ${currentPercent}%;"></div>
+                        </div>
+                    </div>`;
+            });
+        }
+
+        // ポップアップ制御関数群
         function openInfoPopup(event, shizai, drug, contents) {
             event.stopPropagation();
             document.getElementById("popup-title").innerText = "⚠️ 備考・内訳";
