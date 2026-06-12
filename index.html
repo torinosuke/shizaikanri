@@ -21,7 +21,7 @@
                 <button onclick="toggleAddForm()" class="bg-blue-500 hover:bg-blue-400 px-3 py-1 rounded text-sm font-bold transition">
                     ➕ 資材追加
                 </button>
-                <button onclick="fetchStocks()" class="bg-blue-700 hover:bg-blue-800 px-3 py-1 rounded text-sm transition">
+                <button id="refresh-btn" onclick="fetchStocks()" class="bg-blue-700 hover:bg-blue-800 px-3 py-1 rounded text-sm transition min-w-[60px]">
                     🔄 更新
                 </button>
             </div>
@@ -387,7 +387,17 @@
         async function fetchStocks() {
             const errorArea = document.getElementById("error-message");
             const errorText = document.getElementById("error-text");
+            const refreshBtn = document.getElementById("refresh-btn");
+            
             errorArea.classList.add("hidden");
+            
+            // 🌟 更新ボタンにフィードバックを表示
+            if (refreshBtn) {
+                refreshBtn.innerText = "⏳ 更新中...";
+                refreshBtn.disabled = true;
+                refreshBtn.classList.add("opacity-60");
+            }
+
             try {
                 const { data: stocks, error } = await db.from('shizai_stocks').select('*').order('id', { ascending: true });
                 if (error) { errorText.innerText = error.message; errorArea.classList.remove("hidden"); return; }
@@ -397,6 +407,13 @@
                 renderStockList();
             } catch (e) {
                 errorText.innerText = "通信エラー: " + e.message; errorArea.classList.remove("hidden");
+            } finally {
+                // 🌟 更新完了後にボタンを元に戻す
+                if (refreshBtn) {
+                    refreshBtn.innerText = "🔄 更新";
+                    refreshBtn.disabled = false;
+                    refreshBtn.classList.remove("opacity-60");
+                }
             }
         }
 
@@ -535,7 +552,7 @@
                             <div class="flex flex-col justify-between items-end flex-shrink-0 min-w-[70px]">
                                 ${statusBadge}
                                 <div class="flex items-center space-x-1.5 mt-auto pt-1">
-                                    <span class="text-gray-500 font-bold tracking-tight" style="font-size: 10px;">${item.current_stock}個</span>
+                                    <span class="text-gray-500 font-bold tracking-tight text-xxs">${item.current_stock}個</span>
                                     <span id="arrow-${item.id}" class="text-xs text-gray-400 font-bold w-3 text-center">▼</span>
                                 </div>
                             </div>
