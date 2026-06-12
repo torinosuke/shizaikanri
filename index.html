@@ -8,6 +8,8 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         .cursor-pointer, .header-title-btn, .page-btn { -webkit-tap-highlight-color: transparent; }
+        /* 薬品名行の微調整 */
+        .drug-info-line { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px; }
     </style>
 </head>
 <body class="bg-gray-100 min-h-screen text-gray-800 font-sans pb-12">
@@ -50,7 +52,6 @@
                     <label class="block text-gray-600 font-medium mb-1">資材名称</label>
                     <input type="text" id="input-shizai" placeholder="例：患者用説明資材、保冷バッグ" class="w-full p-2 border rounded-lg outline-none">
                 </div>
-                
                 <div class="grid grid-cols-2 gap-2">
                     <div>
                         <label class="block text-gray-600 font-medium mb-1">初期在庫数</label>
@@ -61,12 +62,10 @@
                         <input type="number" id="input-min" value="2" min="0" class="w-full p-2 border rounded-lg outline-none">
                     </div>
                 </div>
-
                 <div class="mt-3">
                     <label class="block text-gray-600 font-medium mb-1">内訳・備考（※改行して箇条書きOK）</label>
                     <textarea id="input-contents" rows="3" placeholder="例：&#13;・保冷バッグ・廃棄袋同梱" class="w-full p-3 border rounded-lg outline-none text-sm bg-white resize-none"></textarea>
                 </div>
-
                 <div class="mt-3 bg-gray-50 p-2.5 rounded-lg border border-dashed border-gray-300">
                     <label class="block text-gray-600 font-bold text-xs mb-1">📸 資材の写真を追加（※任意）</label>
                     <div class="flex items-center space-x-2">
@@ -78,7 +77,6 @@
                     </div>
                     <input type="hidden" id="input-image-url" value="">
                 </div>
-
                 <div class="border-t pt-2 mt-2 space-y-2 bg-gray-50 p-2 rounded-lg">
                     <label class="block text-gray-700 font-bold text-xs">📦 発注先の設定</label>
                     <div id="add-field-online" class="border-b pb-2 mb-2">
@@ -96,7 +94,6 @@
                         </div>
                     </div>
                 </div>
-
                 <button onclick="addNewShizai()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-lg transition mt-2">
                     データベースに登録
                 </button>
@@ -116,7 +113,6 @@
                     <button id="search-clear-btn" onclick="clearSearchInput()" class="absolute inset-y-0 right-0 px-3 flex items-center text-gray-400 hover:text-gray-600 hidden">✕</button>
                 </div>
             </div>
-
             <div class="grid grid-cols-2 gap-2">
                 <div>
                     <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">対象薬品フィルター</label>
@@ -127,7 +123,6 @@
                         <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-gray-500 text-xs">▼</div>
                     </div>
                 </div>
-
                 <div>
                     <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">並び替え</label>
                     <div class="relative">
@@ -190,14 +185,9 @@
         function handleSearchInput() {
             const input = document.getElementById("search-input");
             searchQuery = input.value.trim();
-            
             const clearBtn = document.getElementById("search-clear-btn");
-            if (searchQuery.length > 0) {
-                clearBtn.classList.remove("hidden");
-            } else {
-                clearBtn.classList.add("hidden");
-            }
-            
+            if (searchQuery.length > 0) clearBtn.classList.remove("hidden");
+            else clearBtn.classList.add("hidden");
             currentPage = 1;
             renderStockList();
         }
@@ -232,29 +222,22 @@
             selectedDrugFilter = "ALL";
             const filterElement = document.getElementById("drug-filter");
             if (filterElement) filterElement.value = "ALL";
-            
             clearSearchInput();
-            
             const form = document.getElementById("add-form-section");
-            if (form && !form.classList.contains("hidden")) {
-                form.classList.add("hidden");
-            }
+            if (form && !form.classList.contains("hidden")) form.classList.add("hidden");
         }
 
         function normalizeString(str) {
             if (!str) return "";
-            return str.toLowerCase()
-                .normalize("NFKC")
-                .replace(/[\u30a1-\u30f6]/g, function(match) {
-                    return String.fromCharCode(match.charCodeAt(0) - 0x60);
-                });
+            return str.toLowerCase().normalize("NFKC").replace(/[\u30a1-\u30f6]/g, function(match) {
+                return String.fromCharCode(match.charCodeAt(0) - 0x60);
+            });
         }
 
         function toggleDetails(id) {
             const panel = document.getElementById(`control-panel-${id}`);
             const arrow = document.getElementById(`arrow-${id}`);
             if (!panel) return;
-
             if (openedCardId === id) {
                 panel.classList.add("hidden");
                 if (arrow) arrow.innerText = "▼";
@@ -289,7 +272,6 @@
             return url.split('/storage/v1/object/public/shizai-images/')[1];
         }
 
-        // 🌟 【新規追加】画像をブラウザ側で軽量化（縮小・リサイズ・圧縮）する関数
         function compressImage(file, maxWidth = 800, quality = 0.75) {
             return new Promise((resolve, reject) => {
                 const reader = new FileReader();
@@ -298,33 +280,25 @@
                     const img = new Image();
                     img.src = event.target.result;
                     img.onload = () => {
-                        // 縮小後のサイズ計算（アスペクト比維持）
                         let width = img.width;
                         let height = img.height;
                         if (width > maxWidth) {
                             height = Math.round((height * maxWidth) / width);
                             width = maxWidth;
                         }
-
-                        // Canvasを使って再描画
                         const canvas = document.createElement('canvas');
                         canvas.width = width;
                         canvas.height = height;
                         const ctx = canvas.getContext('2d');
                         ctx.drawImage(img, 0, 0, width, height);
-
-                        // 指定した画質(quality)のJPEG形式のBlob（バイナリ）に変換
                         canvas.toBlob((blob) => {
                             if (blob) {
-                                // Supabaseがファイルとして認識できるよう、Fileオブジェクトを再生成して返す
                                 const compressedFile = new File([blob], file.name, {
                                     type: 'image/jpeg',
                                     lastModified: Date.now()
                                 });
                                 resolve(compressedFile);
-                            } else {
-                                reject(new Error("Canvas to Blob 変換に失敗しました"));
-                            }
+                            } else reject(new Error("Canvas to Blob 変換に失敗しました"));
                         }, 'image/jpeg', quality);
                     };
                     img.onerror = (err) => reject(err);
@@ -337,56 +311,35 @@
             const fileInput = mode === 'add' ? document.getElementById('input-image-file') : document.getElementById(`edit-image-file-${id}`);
             const statusLabel = mode === 'add' ? document.getElementById('add-upload-status') : document.getElementById(`edit-upload-status-${id}`);
             const urlHiddenInput = mode === 'add' ? document.getElementById('input-image-url') : document.getElementById(`edit-image-url-${id}`);
-
             if (!fileInput || !fileInput.files || fileInput.files.length === 0) return;
-            
             let file = fileInput.files[0];
-            statusLabel.innerText = "⏳ 画像を圧縮・最適化中...";
+            statusLabel.innerText = "⏳ 処理中...";
             statusLabel.className = "text-xxs text-blue-600 font-bold animate-pulse";
-
             try {
-                // 🌟 【変更点】アップロード前に compressImage 関数を呼び出して軽量化
-                // 横幅最大800px、画質75%のコンパクトなJPEG形式に変換します。
                 file = await compressImage(file, 800, 0.75);
-
                 statusLabel.innerText = "⏳ アップロード中...";
-
                 if (mode === 'edit' && id) {
                     const targetItem = currentStocksData.find(item => item.id === id);
                     if (targetItem && targetItem.image_url) {
                         const oldStoragePath = extractStoragePath(targetItem.image_url);
-                        if (oldStoragePath) {
-                            await db.storage.from('shizai-images').remove([oldStoragePath]);
-                        }
+                        if (oldStoragePath) await db.storage.from('shizai-images').remove([oldStoragePath]);
                     }
                 }
-
-                // 拡張子を強制的に .jpg に合わせてファイル名を生成
                 const fileName = `${Date.now()}_${Math.random().toString(36).substring(2, 7)}.jpg`;
                 const filePath = `shizai_pics/${fileName}`;
-
-                const { data, error } = await db.storage
-                    .from('shizai-images')
-                    .upload(filePath, file);
-
+                const { data, error } = await db.storage.from('shizai-images').upload(filePath, file);
                 if (error) throw error;
-
-                const { data: urlData } = db.storage
-                    .from('shizai-images')
-                    .getPublicUrl(filePath);
-
+                const { data: urlData } = db.storage.from('shizai-images').getPublicUrl(filePath);
                 urlHiddenInput.value = urlData.publicUrl;
-                statusLabel.innerText = "✅ 最適化・アップロード完了";
+                statusLabel.innerText = "✅ 完了";
                 statusLabel.className = "text-xxs text-green-600 font-bold";
-
                 const deleteBtn = document.getElementById(`btn-delete-image-${id}`);
                 if (deleteBtn) deleteBtn.classList.remove("hidden");
-
             } catch (err) {
                 console.error(err);
-                statusLabel.innerText = "❌ エラーが発生しました";
+                statusLabel.innerText = "❌ エラー";
                 statusLabel.className = "text-xxs text-red-500 font-bold";
-                alert("画像の処理に失敗しました: " + err.message);
+                alert("画像処理に失敗しました: " + err.message);
             }
         }
 
@@ -394,40 +347,26 @@
             const urlHiddenInput = document.getElementById(`edit-image-url-${id}`);
             const statusLabel = document.getElementById(`edit-upload-status-${id}`);
             const deleteBtn = document.getElementById(`btn-delete-image-${id}`);
-            
             if (!urlHiddenInput || !urlHiddenInput.value) return;
-
-            if (!confirm("【確認】この資材の写真データを完全に消去し、「写真なし」の状態に戻しますか？")) return;
-
+            if (!confirm("写真データを削除しますか？")) return;
             const currentUrl = urlHiddenInput.value;
-            statusLabel.innerText = "⏳ 写真を消去中...";
-            statusLabel.className = "text-xxs text-orange-600 font-bold";
-
+            statusLabel.innerText = "⏳ 消去中...";
             try {
                 const storagePath = extractStoragePath(currentUrl);
-                if (storagePath) {
-                    const { error: storageError } = await db.storage
-                        .from('shizai-images')
-                        .remove([storagePath]);
-                    if (storageError) console.warn("Storageからの削除に失敗しました:", storageError.message);
-                }
-
+                if (storagePath) await db.storage.from('shizai-images').remove([storagePath]);
                 urlHiddenInput.value = "";
-                statusLabel.innerText = "🗑️ 写真を削除しました（未保存）";
+                statusLabel.innerText = "🗑️ 削除完了（未保存）";
                 statusLabel.className = "text-xxs text-red-500 font-bold";
-                
                 if (deleteBtn) deleteBtn.classList.add("hidden");
-
             } catch (err) {
                 console.error(err);
-                alert("写真の消去中にエラーが発生しました: " + err.message);
+                alert("写真の消去に失敗しました: " + err.message);
             }
         }
 
         async function addNewShizai() {
             const selectElement = document.getElementById("input-drug-select");
             const textInputElement = document.getElementById("input-drug-text");
-            
             let drug = (selectElement.value === "__NEW__") ? textInputElement.value.trim() : selectElement.value;
             const shizai = document.getElementById("input-shizai").value.trim();
             const current = parseInt(document.getElementById("input-current").value) || 0;
@@ -437,109 +376,49 @@
             const orderUrl = document.getElementById("input-order-url").value.trim();
             const phoneName = document.getElementById("input-phone-name").value.trim();
             const phoneNumber = document.getElementById("input-phone-number").value.trim();
-
-            if (!drug || drug === "ーー 選択してください ーー") {
-                alert("対象の薬品名を選択、または新しく入力してください。");
-                return;
-            }
-            if (!shizai) {
-                alert("資材名称は必ず入力してください。");
-                return;
-            }
-
-            const { error } = await db
-                .from('shizai_stocks')
-                .insert([{ 
-                    drug_name: drug, 
-                    shizai_name: shizai, 
-                    current_stock: current, 
-                    min_stock: min, 
-                    is_ordering: false,
-                    order_type: 'hybrid',
-                    order_url: orderUrl,
-                    phone_name: phoneName,
-                    phone_number: phoneNumber,
-                    contents: contents,
-                    image_url: imageUrl
-                }]);
-
-            if (error) {
-                alert("登録エラー: " + error.message);
-            } else {
-                alert("新しく資材を登録しました！");
-                textInputElement.value = "";
-                textInputElement.classList.add("hidden");
-                document.getElementById("input-shizai").value = "";
-                document.getElementById("input-current").value = "0";
-                document.getElementById("input-contents").value = "";
-                document.getElementById("input-image-url").value = "";
-                document.getElementById("input-image-file").value = "";
-                document.getElementById("add-upload-status").innerText = "未選択";
-                document.getElementById("add-upload-status").className = "text-xxs text-gray-400 truncate max-w-[180px]";
-                document.getElementById("input-order-url").value = "";
-                document.getElementById("input-phone-name").value = "";
-                document.getElementById("input-phone-number").value = "";
-                toggleAddForm();
-                
-                selectedDrugFilter = drug; 
-                currentPage = 1;
-                fetchStocks();
-            }
+            if (!drug || !shizai) { alert("薬品名と資材名称を入力してください。"); return; }
+            const { error } = await db.from('shizai_stocks').insert([{ 
+                drug_name: drug, shizai_name: shizai, current_stock: current, min_stock: min, 
+                is_ordering: false, order_type: 'hybrid', order_url: orderUrl, phone_name: phoneName, 
+                phone_number: phoneNumber, contents: contents, image_url: imageUrl
+            }]);
+            if (error) alert("登録エラー: " + error.message);
+            else { alert("登録しました！"); resetToAllDrugs(); fetchStocks(); toggleAddForm(); }
         }
 
         async function fetchStocks() {
             const errorArea = document.getElementById("error-message");
             const errorText = document.getElementById("error-text");
             errorArea.classList.add("hidden");
-
             try {
-                const { data: stocks, error } = await db
-                    .from('shizai_stocks')
-                    .select('*')
-                    .order('id', { ascending: true });
-
-                if (error) {
-                    errorText.innerText = error.message;
-                    errorArea.classList.remove("hidden");
-                    return;
-                }
-
+                const { data: stocks, error } = await db.from('shizai_stocks').select('*').order('id', { ascending: true });
+                if (error) { errorText.innerText = error.message; errorArea.classList.remove("hidden"); return; }
                 currentStocksData = stocks || [];
                 updateDrugFilterOptions();
                 updateAddFormDrugOptions();
                 renderStockList();
-
             } catch (e) {
-                errorText.innerText = "通信エラー: " + e.message;
-                errorArea.classList.remove("hidden");
+                errorText.innerText = "通信エラー: " + e.message; errorArea.classList.remove("hidden");
             }
         }
 
         function updateDrugFilterOptions() {
             const filterElement = document.getElementById("drug-filter");
-            const drugNames = [...new Set(currentStocksData.map(item => item.drug_name))]
-                .sort((a, b) => a.localeCompare(b, 'ja'));
-
+            const drugNames = [...new Set(currentStocksData.map(item => item.drug_name))].sort((a, b) => a.localeCompare(b, 'ja'));
             filterElement.innerHTML = `<option value="ALL">全ての薬品</option>`;
             drugNames.forEach(name => {
                 const selectedAttr = (name === selectedDrugFilter) ? "selected" : "";
                 filterElement.innerHTML += `<option value="${name}" ${selectedAttr}>${name}</option>`;
             });
-            if (selectedDrugFilter !== "ALL" && !drugNames.includes(selectedDrugFilter)) {
-                selectedDrugFilter = "ALL";
-                filterElement.value = "ALL";
-            }
         }
 
         function updateAddFormDrugOptions() {
             const selectElement = document.getElementById("input-drug-select");
             if (!selectElement) return;
-            const drugNames = [...new Set(currentStocksData.map(item => item.drug_name))]
-                .sort((a, b) => a.localeCompare(b, 'ja'));
-
+            const drugNames = [...new Set(currentStocksData.map(item => item.drug_name))].sort((a, b) => a.localeCompare(b, 'ja'));
             let html = `<option value="">ーー 選択してください ーー</option>`;
             drugNames.forEach(name => { html += `<option value="${name}">${name}</option>`; });
-            html += `<option value="__NEW__">➕ 新しい薬品を追加（直接入力）...</option>`;
+            html += `<option value="__NEW__">➕ 新しい薬品を追加...</option>`;
             selectElement.innerHTML = html;
         }
 
@@ -549,436 +428,222 @@
             const alertListElement = document.getElementById("alert-list");
             const listTitleElement = document.getElementById("list-title");
             const paginationPanel = document.getElementById("pagination-panel");
-
-            stockListElement.innerHTML = "";
-            alertListElement.innerHTML = "";
+            stockListElement.innerHTML = ""; alertListElement.innerHTML = "";
             let hasAlert = false;
-
             if (currentStocksData.length === 0) {
                 stockListElement.innerHTML = `<p class="text-center text-gray-500 py-8">資材が登録されていません。</p>`;
-                alertSection.classList.add("hidden");
-                paginationPanel.classList.add("hidden");
-                return;
+                alertSection.classList.add("hidden"); paginationPanel.classList.add("hidden"); return;
             }
-
-            if (selectedDrugFilter === "ALL") {
-                listTitleElement.innerText = searchQuery ? `検索結果一覧` : "全資材一覧";
-            } else {
-                listTitleElement.innerText = `「${selectedDrugFilter}」の資材一覧`;
-            }
+            if (selectedDrugFilter === "ALL") listTitleElement.innerText = searchQuery ? `検索結果一覧` : "全資材一覧";
+            else listTitleElement.innerText = `「${selectedDrugFilter}」の資材一覧`;
 
             currentStocksData.forEach(item => {
-                const isShortage = item.current_stock < item.min_stock;
-                if (isShortage && !item.is_ordering) {
+                if (item.current_stock < item.min_stock && !item.is_ordering) {
                     hasAlert = true;
-                    alertListElement.innerHTML += `
-                        <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-2 text-sm rounded shadow-sm">
-                            <strong>${item.drug_name}</strong>: ${item.shizai_name} (残り ${item.current_stock}個 / 最低 ${item.min_stock}個)
-                        </div>
-                    `;
+                    alertListElement.innerHTML += `<div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-2 text-sm rounded shadow-sm"><strong>${item.drug_name}</strong>: ${item.shizai_name}</div>`;
                 }
             });
 
             let filteredItems = currentStocksData.filter(item => {
-                if (selectedDrugFilter !== "ALL" && item.drug_name !== selectedDrugFilter) {
-                    return false;
-                }
+                if (selectedDrugFilter !== "ALL" && item.drug_name !== selectedDrugFilter) return false;
                 if (searchQuery) {
-                    const normalizedQuery = normalizeString(searchQuery);
-                    const matchShizai = normalizeString(item.shizai_name).includes(normalizedQuery);
-                    const matchDrug = normalizeString(item.drug_name).includes(normalizedQuery);
-                    if (!matchShizai && !matchDrug) {
-                        return false;
-                    }
+                    const nq = normalizeString(searchQuery);
+                    if (!normalizeString(item.shizai_name).includes(nq) && !normalizeString(item.drug_name).includes(nq)) return false;
                 }
                 return true;
             });
 
             const sortMethod = document.getElementById("sort-selector").value;
             filteredItems.sort((a, b) => {
-                const aIsUrgent = (a.is_ordering || (a.current_stock < a.min_stock)) ? 1 : 0;
-                const bIsUrgent = (b.is_ordering || (b.current_stock < b.min_stock)) ? 1 : 0;
-
-                if (aIsUrgent !== bIsUrgent) { return bIsUrgent - aIsUrgent; }
-
-                if (sortMethod === "shizai_asc") {
-                    return (a.shizai_name || "").localeCompare((b.shizai_name || ""), 'ja');
-                } else if (sortMethod === "stock_asc") {
-                    return (a.current_stock || 0) - (b.current_stock || 0);
-                } else if (sortMethod === "stock_desc") {
-                    return (b.current_stock || 0) - (a.current_stock || 0);
-                }
-                
-                const aTime = a.updated_at ? new Date(a.updated_at).getTime() : 0;
-                const bTime = b.updated_at ? new Date(b.updated_at).getTime() : 0;
-                return bTime - aTime;
+                const aUrgent = (a.is_ordering || (a.current_stock < a.min_stock)) ? 1 : 0;
+                const bUrgent = (b.is_ordering || (b.current_stock < b.min_stock)) ? 1 : 0;
+                if (aUrgent !== bUrgent) return bUrgent - aUrgent;
+                if (sortMethod === "shizai_asc") return (a.shizai_name || "").localeCompare((b.shizai_name || ""), 'ja');
+                if (sortMethod === "stock_asc") return (a.current_stock || 0) - (b.current_stock || 0);
+                if (sortMethod === "stock_desc") return (b.current_stock || 0) - (a.current_stock || 0);
+                return new Date(b.updated_at || 0) - new Date(a.updated_at || 0);
             });
 
-            const totalItems = filteredItems.length;
-            const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE) || 1;
-            
+            const totalPages = Math.ceil(filteredItems.length / ITEMS_PER_PAGE) || 1;
             if (currentPage > totalPages) currentPage = totalPages;
-            if (currentPage < 1) currentPage = 1;
-
             const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-            const endIndex = startIndex + ITEMS_PER_PAGE;
-            const pageItems = filteredItems.slice(startIndex, endIndex);
+            const pageItems = filteredItems.slice(startIndex, startIndex + ITEMS_PER_PAGE);
 
-            if (totalItems > 0) {
-                document.getElementById("page-info").innerText = `${currentPage} / ${totalPages} ページ (${totalItems}件中 ${startIndex + 1}〜${Math.min(endIndex, totalItems)}件)`;
+            if (filteredItems.length > 0) {
+                document.getElementById("page-info").innerText = `${currentPage} / ${totalPages} ページ`;
                 paginationPanel.classList.remove("hidden");
                 document.getElementById("prev-page-btn").disabled = (currentPage === 1);
                 document.getElementById("next-page-btn").disabled = (currentPage === totalPages);
             } else {
-                stockListElement.innerHTML = `<p class="text-center text-gray-500 py-8">該当する資材が見つかりません。</p>`;
-                paginationPanel.classList.add("hidden");
-                if (hasAlert) { alertSection.classList.remove("hidden"); } else { alertSection.classList.add("hidden"); }
-                return;
+                stockListElement.innerHTML = `<p class="text-center text-gray-500 py-8">該当なし</p>`;
+                paginationPanel.classList.add("hidden"); return;
             }
 
             pageItems.forEach(item => {
-                const isShortage = item.current_stock < item.min_stock;
-
                 if (editingId === item.id) {
                     const hasPhoto = item.image_url && item.image_url.trim() !== "";
-
-                    const editCardHtml = `
+                    stockListElement.innerHTML += `
                         <div class="bg-blue-50 p-4 rounded-xl shadow-sm border border-blue-400 text-sm space-y-2">
                             <div class="font-bold text-blue-800 text-xs mb-1">✏️ 登録情報を編集中</div>
-                            <div>
-                                <label class="block text-xs text-gray-500 mb-0.5">薬品名</label>
-                                <input type="text" id="edit-drug-${item.id}" value="${item.drug_name}" class="w-full p-1.5 border rounded">
-                            </div>
-                            <div>
-                                <label class="block text-xs text-gray-500 mb-0.5">資材名</label>
-                                <input type="text" id="edit-shizai-${item.id}" value="${item.shizai_name}" class="w-full p-1.5 border rounded">
-                            </div>
+                            <input type="text" id="edit-drug-${item.id}" value="${item.drug_name}" class="w-full p-1.5 border rounded mb-2" placeholder="薬品名">
+                            <input type="text" id="edit-shizai-${item.id}" value="${item.shizai_name}" class="w-full p-1.5 border rounded mb-2" placeholder="資材名">
                             <div class="grid grid-cols-2 gap-2">
-                                <div>
-                                    <label class="block text-xs text-gray-500 mb-0.5">現在在庫</label>
-                                    <input type="number" id="edit-current-${item.id}" value="${item.current_stock}" min="0" class="w-full p-1.5 border rounded">
-                                </div>
-                                <div>
-                                    <label class="block text-xs text-gray-500 mb-0.5">最低在庫</label>
-                                    <input type="number" id="edit-min-${item.id}" value="${item.min_stock}" min="0" class="w-full p-1.5 border rounded">
-                                </div>
+                                <input type="number" id="edit-current-${item.id}" value="${item.current_stock}" class="w-full p-1.5 border rounded" placeholder="在庫">
+                                <input type="number" id="edit-min-${item.id}" value="${item.min_stock}" class="w-full p-1.5 border rounded" placeholder="最低在庫">
                             </div>
-                            
-                            <div>
-                                <label class="block text-xs text-gray-500 mb-0.5">内訳・備考</label>
-                                <textarea id="edit-contents-${item.id}" rows="3" class="w-full p-1.5 border rounded text-xs resize-none">${item.contents || ''}</textarea>
-                            </div>
-                            
+                            <textarea id="edit-contents-${item.id}" rows="3" class="w-full p-1.5 border rounded text-xs resize-none" placeholder="備考">${item.contents || ''}</textarea>
                             <div class="bg-white p-2 rounded border border-gray-200">
-                                <label class="block text-xxs font-bold text-gray-500 mb-1">📸 資材の写真</label>
-                                <div class="flex items-center space-x-2 flex-wrap gap-y-1.5">
-                                    <input type="file" id="edit-image-file-${item.id}" accept="image/*" capture="environment" onchange="uploadImageHandler('edit', ${item.id})" class="hidden">
-                                    <button type="button" onclick="document.getElementById('edit-image-file-${item.id}').click()" class="bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-1 px-2 rounded text-xxs border transition">
-                                        📷 写真を変更
-                                    </button>
-                                    <button type="button" id="btn-delete-image-${item.id}" onclick="deleteImageOnly(${item.id})" class="bg-red-50 hover:bg-red-100 text-red-600 font-bold py-1 px-2 rounded text-xxs border border-red-200 transition ${hasPhoto ? '' : 'hidden'}">
-                                        🗑️ 写真を削除
-                                    </button>
-                                    <span id="edit-upload-status-${item.id}" class="text-xxs text-gray-400 truncate max-w-[150px]">
-                                        ${hasPhoto ? '現在の画像あり' : '未登録'}
-                                    </span>
-                                </div>
+                                <input type="file" id="edit-image-file-${item.id}" accept="image/*" capture="environment" onchange="uploadImageHandler('edit', ${item.id})" class="hidden">
+                                <button onclick="document.getElementById('edit-image-file-${item.id}').click()" class="bg-gray-100 p-1 rounded text-xxs border">📷 写真変更</button>
+                                <button id="btn-delete-image-${item.id}" onclick="deleteImageOnly(${item.id})" class="bg-red-50 text-red-600 p-1 rounded text-xxs border border-red-200 ${hasPhoto ? '' : 'hidden'}">🗑️ 写真削除</button>
+                                <span id="edit-upload-status-${item.id}" class="text-xxs text-gray-400">${hasPhoto ? '画像あり' : 'なし'}</span>
                                 <input type="hidden" id="edit-image-url-${item.id}" value="${item.image_url || ''}">
                             </div>
-                            
-                            <div class="border-t pt-2 mt-1 space-y-2 bg-white p-2 rounded border border-blue-200">
-                                <label class="block text-gray-700 font-bold text-xs">📦 発注情報</label>
-                                <div>
-                                    <label class="block text-gray-400 text-xs mb-0.5">オンライン発注URL</label>
-                                    <input type="url" id="edit-order-url-${item.id}" value="${item.order_url || ''}" class="w-full p-1 border rounded text-xs">
-                                </div>
-                                <div class="grid grid-cols-2 gap-1">
-                                    <div>
-                                        <label class="block text-gray-400 text-xs mb-0.5">電話連絡先名</label>
-                                        <input type="text" id="edit-phone-name-${item.id}" value="${item.phone_name || ''}" class="w-full p-1 border rounded text-xs">
-                                    </div>
-                                    <div>
-                                        <label class="block text-gray-400 text-xs mb-0.5">電話番号</label>
-                                        <input type="tel" id="edit-phone-number-${item.id}" value="${item.phone_number || ''}" class="w-full p-1 border rounded text-xs">
-                                    </div>
-                                </div>
-                            </div>
-
                             <div class="grid grid-cols-2 gap-2 pt-2">
-                                <button onclick="cancelEdit()" class="bg-gray-300 text-gray-700 font-bold py-1.5 rounded-lg">キャンセル</button>
-                                <button onclick="saveEdit(${item.id})" class="bg-blue-600 text-white font-bold py-1.5 rounded-lg">変更を保存</button>
+                                <button onclick="cancelEdit()" class="bg-gray-300 py-1.5 rounded-lg font-bold">キャンセル</button>
+                                <button onclick="saveEdit(${item.id})" class="bg-blue-600 text-white py-1.5 rounded-lg font-bold">保存</button>
                             </div>
-                        </div>
-                    `;
-                    stockListElement.innerHTML += editCardHtml;
+                        </div>`;
                     return;
                 }
 
-                let statusBadge = `<span class="bg-green-100 text-green-800 text-xs font-bold px-2 py-0.5 rounded shadow-sm whitespace-nowrap">在庫あり</span>`;
-                let cardBorder = "border-gray-200 bg-white hover:bg-gray-50";
-
+                const isShortage = item.current_stock < item.min_stock;
+                let statusBadge = `<span class="bg-green-100 text-green-800 text-xs font-bold px-2 py-0.5 rounded">在庫あり</span>`;
+                let cardBorder = "border-gray-200 bg-white";
                 if (item.is_ordering) {
-                    statusBadge = `<span class="bg-yellow-100 text-yellow-800 text-xs font-bold px-2 py-0.5 rounded shadow-sm whitespace-nowrap">🟡 取り寄せ中</span>`;
-                    cardBorder = "border-yellow-300 bg-yellow-50 hover:bg-yellow-100/70";
+                    statusBadge = `<span class="bg-yellow-100 text-yellow-800 text-xs font-bold px-2 py-0.5 rounded">取り寄せ中</span>`;
+                    cardBorder = "border-yellow-300 bg-yellow-50";
                 } else if (isShortage) {
-                    statusBadge = `<span class="bg-red-100 text-red-800 text-xs font-bold px-2 py-0.5 rounded shadow-sm whitespace-nowrap">🔴 要発注</span>`;
-                    cardBorder = "border-red-200 bg-red-50 hover:bg-red-100/70";
-                } else if (item.current_stock === 0 && item.min_stock === 0) {
-                    statusBadge = `<span class="bg-gray-200 text-gray-600 text-xs font-bold px-2 py-0.5 rounded shadow-sm whitespace-nowrap">在庫なし</span>`;
-                    cardBorder = "border-gray-300 bg-gray-50 hover:bg-gray-100";
+                    statusBadge = `<span class="bg-red-100 text-red-800 text-xs font-bold px-2 py-0.5 rounded">要発注</span>`;
+                    cardBorder = "border-red-200 bg-red-50";
                 }
 
-                let orderDetailHtml = "";
-                const hasUrl = item.order_url && item.order_url.trim().startsWith('http');
-                const hasPhone = item.phone_number && item.phone_number.trim() !== "";
-                if (!hasUrl && !hasPhone) {
-                    orderDetailHtml = `<div class="mt-2 p-2 bg-gray-100 text-xs rounded-lg border border-gray-300 text-gray-500 italic text-center">⚠️ 発注先登録なし</div>`;
-                } else {
-                    orderDetailHtml = `<div class="mt-2 p-2 bg-blue-50 text-xs rounded-lg border border-blue-200 space-y-2">`;
-                    if (hasUrl) {
-                        orderDetailHtml += `
-                            <div class="pb-1 ${hasPhone ? 'border-b border-dashed border-blue-200' : ''}">
-                                <p class="font-bold text-green-800">💻 オンライン発注</p>
-                                <p class="mt-0.5"><a href="${item.order_url.trim()}" target="_blank" rel="noopener noreferrer" class="text-green-700 font-bold underline flex items-center">🔗 発注ページを開く ↗️</a></p>
-                            </div>
-                        `;
-                    }
-                    if (hasPhone) {
-                        orderDetailHtml += `
-                            <div>
-                                <p class="font-bold text-blue-800">📞 電話発注</p>
-                                <p class="mt-0.5 text-gray-700"><strong>連絡先:</strong> ${item.phone_name || '未設定'}</p>
-                                <p class="text-gray-700"><strong>TEL:</strong> <a href="tel:${item.phone_number.trim()}" class="text-blue-600 underline font-bold">${item.phone_number.trim()}</a></p>
-                            </div>
-                        `;
-                    }
-                    orderDetailHtml += `</div>`;
-                }
+                const thumbnailHtml = item.image_url ? `<img src="${item.image_url}" onclick="openImagePopup(event, '${item.shizai_name}', '${item.drug_name}', '${item.image_url}')" class="w-10 h-10 object-cover rounded border flex-shrink-0 bg-white">` : `<div class="w-10 h-10 rounded border flex-shrink-0 bg-gray-100 flex items-center justify-center text-gray-400 text-lg">📷</div>`;
+                const infoButtonHtml = item.contents ? `<span onclick="openInfoPopup(event, '${item.shizai_name}', '${item.drug_name}', \`${item.contents.replace(/`/g, '\\`')}\`)" class="ml-1.5 inline-flex items-center justify-center bg-blue-100 text-blue-600 text-xs font-bold rounded-full w-4 h-4 shadow-sm border border-blue-200 flex-shrink-0 mt-0.5 animate-pulse">ℹ️</span>` : "";
 
-                const isCurrentlyOpened = (openedCardId === item.id);
-                const panelClass = isCurrentlyOpened ? "" : "hidden";
-                const arrowChar = isCurrentlyOpened ? "▲" : "▼";
-                
-                const safeImgUrl = item.image_url ? item.image_url.replace(/`/g, '\\`').replace(/'/g, "\\'") : '';
-                const safeShizaiName = (item.shizai_name || '').replace(/`/g, '\\`').replace(/'/g, "\\'");
-                const safeDrugName = (item.drug_name || '').replace(/`/g, '\\`').replace(/'/g, "\\'");
-                const safeContents = (item.contents || '').replace(/`/g, '\\`').replace(/'/g, "\\'");
-
-                let thumbnailHtml = "";
-                if (item.image_url && item.image_url.trim() !== "") {
-                    thumbnailHtml = `
-                        <img src="${item.image_url.trim()}" 
-                             onclick="openImagePopup(event, '${safeShizaiName}', '${safeDrugName}', '${safeImgUrl}')"
-                             class="w-10 h-10 object-cover rounded border flex-shrink-0 bg-white cursor-zoom-in active:scale-95 transition-transform">
-                    `;
-                } else {
-                    thumbnailHtml = `<div class="w-10 h-10 rounded border flex-shrink-0 bg-gray-100 flex items-center justify-center text-gray-400 text-lg select-none">📷</div>`;
-                }
-
-                let infoButtonHtml = "";
-                if (item.contents && item.contents.trim() !== "") {
-                    infoButtonHtml = `
-                        <span onclick="openInfoPopup(event, '${safeShizaiName}', '${safeDrugName}', \`${safeContents}\`)" 
-                              class="ml-1.5 inline-flex items-center justify-center bg-blue-100 hover:bg-blue-200 text-blue-600 text-xs font-bold rounded-full w-4 h-4 shadow-sm border border-blue-200 flex-shrink-0 align-middle mt-0.5 animate-pulse">
-                            ℹ️
-                        </span>
-                    `;
-                }
-
-                const cardHtml = `
+                stockListElement.innerHTML += `
                     <div onclick="toggleDetails(${item.id})" class="p-3 rounded-xl shadow-sm border ${cardBorder} transition cursor-pointer select-none">
                         <div class="flex justify-between items-start text-sm">
                             <div class="flex-1 pr-2 min-w-0 flex items-center space-x-2.5">
                                 ${thumbnailHtml}
                                 <div class="min-w-0 flex-1">
-                                    <span class="text-xxs text-gray-400 block truncate font-medium mb-0.5">${item.drug_name}</span>
+                                    <div class="drug-info-line">
+                                        <span class="text-xxs text-gray-400 truncate font-medium flex-1 mr-2">${item.drug_name}</span>
+                                        <span class="text-xxs font-bold text-gray-600 whitespace-nowrap">残り ${item.current_stock}</span>
+                                    </div>
                                     <div class="flex items-start max-w-full">
                                         <h3 class="font-bold text-gray-800 text-sm break-words leading-tight">${item.shizai_name || ''}</h3>
                                         ${infoButtonHtml}
                                     </div>
                                 </div>
                             </div>
-                            <div class="flex items-center space-x-1.5 flex-shrink-0 pt-0.5">
+                            <div class="flex items-center space-x-1 flex-shrink-0 pt-0.5">
                                 ${statusBadge}
-                                <span id="arrow-${item.id}" class="text-xs text-gray-400 font-bold w-3 text-center">${arrowChar}</span>
+                                <span id="arrow-${item.id}" class="text-xs text-gray-400 font-bold w-3 text-center">▼</span>
                             </div>
                         </div>
-                        
-                        <div id="control-panel-${item.id}" class="${panelClass} mt-3 pt-2 border-t border-gray-100 space-y-3" onclick="event.stopPropagation();">
+                        <div id="control-panel-${item.id}" class="hidden mt-3 pt-2 border-t border-gray-100 space-y-3" onclick="event.stopPropagation();">
                             <div class="grid grid-cols-2 gap-2 text-xs text-gray-600 bg-gray-50 p-2 rounded">
-                                <div class="flex items-center">現在在庫: <span class="font-bold text-base text-gray-900 ml-1 mr-0.5">${item.current_stock}</span> 個</div>
-                                <div class="flex items-center">最低在庫: <span class="font-medium text-gray-900 ml-1 mr-0.5">${item.min_stock}</span> 個</div>
+                                <div>現在庫: <span class="font-bold text-base text-gray-900">${item.current_stock}</span> 個</div>
+                                <div>最低在庫: ${item.min_stock} 個</div>
                             </div>
-
-                            <div class="space-y-2">
-                                <div class="grid grid-cols-2 gap-2">
-                                    <button onclick="updateStock(${item.id}, ${item.current_stock - 1})" class="bg-gray-800 hover:bg-gray-900 text-white text-xs font-bold py-2 px-3 rounded-lg shadow-sm" ${item.current_stock <= 0 ? 'disabled class="opacity-50"' : ''}>払い出し (-1)</button>
-                                    ${item.is_ordering ? `
-                                        <button onclick="toggleOrderStatus(${item.id}, true)" class="bg-gray-400 text-white text-xs font-bold py-2 px-3 rounded-lg shadow-sm">取り寄せを取消</button>
-                                    ` : `
-                                        <button onclick="toggleOrderStatus(${item.id}, false)" class="bg-yellow-500 hover:bg-yellow-600 text-white text-xs font-bold py-2 px-3 rounded-lg shadow-sm">取り寄せ中に変更</button>
-                                    `}
-                                </div>
-
-                                ${item.is_ordering ? `
-                                    <div class="flex items-center space-x-2 pt-1 border-t border-dashed border-gray-200">
-                                        <select id="arrival-count-${item.id}" class="w-18 p-1 text-center text-sm border rounded font-bold bg-gray-50 text-gray-700 outline-none">
-                                            <option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5" selected>5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option>
-                                        </select>
-                                        <span class="text-xs text-gray-500">個が</span>
-                                        <button onclick="executeArrival(${item.id}, ${item.current_stock})" class="flex-1 bg-green-600 hover:bg-green-700 text-white text-xs font-bold py-1.5 px-2 rounded-lg shadow-sm">入荷完了</button>
-                                    </div>
-                                ` : ''}
+                            <div class="grid grid-cols-2 gap-2">
+                                <button onclick="updateStock(${item.id}, ${item.current_stock - 1})" class="bg-gray-800 text-white text-xs font-bold py-2 rounded-lg" ${item.current_stock <= 0 ? 'disabled opacity-50' : ''}>払い出し (-1)</button>
+                                <button onclick="toggleOrderStatus(${item.id}, ${item.is_ordering})" class="${item.is_ordering ? 'bg-gray-400' : 'bg-yellow-500'} text-white text-xs font-bold py-2 rounded-lg">${item.is_ordering ? '取り寄せ取消' : '取り寄せ中に変更'}</button>
                             </div>
-
-                            ${orderDetailHtml}
-
-                            <div class="flex justify-between items-center text-xs text-gray-400 pt-1.5 border-t border-dashed border-gray-100 font-medium">
-                                <div>
-                                    ⏱️ 最終更新: ${(() => {
-                                        if (!item.updated_at) return "ーー/ーー/ーー ーー:ーー";
-                                        const d = new Date(item.updated_at);
-                                        return `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-                                    })()}
-                                </div>
-                                <div class="flex space-x-3">
-                                    <button onclick="enterEditMode(${item.id})" class="hover:text-blue-600">✏️ 編集</button>
-                                    <button onclick="deleteShizai(${item.id})" class="hover:text-red-500">🗑️ 削除</button>
-                                </div>
+                            ${item.is_ordering ? `<div class="flex items-center space-x-2 pt-1 border-t border-dashed border-gray-200"><select id="arrival-count-${item.id}" class="w-16 p-1 border rounded text-sm"><option value="1">1</option><option value="5" selected>5</option><option value="10">10</option></select><button onclick="executeArrival(${item.id}, ${item.current_stock})" class="flex-1 bg-green-600 text-white text-xs font-bold py-1.5 rounded-lg">入荷完了</button></div>` : ''}
+                            <div class="flex justify-between items-center text-xs text-gray-400 pt-1.5 border-t border-dashed border-gray-100">
+                                <span>⏱️ 更新: ${item.updated_at ? new Date(item.updated_at).toLocaleDateString('ja-JP', {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'}) : '---'}</span>
+                                <div class="flex space-x-3"><button onclick="enterEditMode(${item.id})" class="hover:text-blue-600">✏️ 編集</button><button onclick="deleteShizai(${item.id})" class="hover:text-red-500">🗑️ 削除</button></div>
                             </div>
                         </div>
-                    </div>
-                `;
-                stockListElement.innerHTML += cardHtml;
+                    </div>`;
             });
-
-            if (hasAlert) { alertSection.classList.remove("hidden"); } else { alertSection.classList.add("hidden"); }
+            if (hasAlert) alertSection.classList.remove("hidden"); else alertSection.classList.add("hidden");
         }
 
         async function updateStock(id, newStock) {
             if (newStock < 0) return;
             const { error } = await db.from('shizai_stocks').update({ current_stock: newStock }).eq('id', id);
-            if (error) alert("更新エラー: " + error.message);
-            else fetchStocks();
+            if (error) alert(error.message); else fetchStocks();
         }
 
-        async function toggleOrderStatus(id, currentOrderingStatus) {
-            const { error } = await db.from('shizai_stocks').update({ is_ordering: !currentOrderingStatus }).eq('id', id);
-            if (error) alert("更新エラー: " + error.message);
-            else fetchStocks();
+        async function toggleOrderStatus(id, status) {
+            const { error } = await db.from('shizai_stocks').update({ is_ordering: !status }).eq('id', id);
+            if (error) alert(error.message); else fetchStocks();
         }
 
-        async function executeArrival(id, currentStock) {
-            const inputElement = document.getElementById(`arrival-count-${id}`);
-            const arrivalCount = parseInt(inputElement.value) || 0;
-            if (arrivalCount <= 0) { alert("1以上の数字を入力してください。"); return; }
-            const { error } = await db.from('shizai_stocks').update({ current_stock: currentStock + arrivalCount, is_ordering: false }).eq('id', id);
-            if (error) alert("入荷処理エラー: " + error.message);
-            else fetchStocks();
+        async function executeArrival(id, current) {
+            const count = parseInt(document.getElementById(`arrival-count-${id}`).value) || 0;
+            const { error } = await db.from('shizai_stocks').update({ current_stock: current + count, is_ordering: false }).eq('id', id);
+            if (error) alert(error.message); else fetchStocks();
         }
 
         async function deleteShizai(id) {
-            const targetItem = currentStocksData.find(item => item.id === id);
-            const nameForConfirm = targetItem ? `${targetItem.drug_name}の${targetItem.shizai_name}` : "この資材";
-            if (!confirm(`【確認】\n「${nameForConfirm}」の登録を完全に削除しますか？`)) return;
-
-            try {
-                if (targetItem && targetItem.image_url) {
-                    const storagePath = extractStoragePath(targetItem.image_url);
-                    if (storagePath) {
-                        await db.storage.from('shizai-images').remove([storagePath]);
-                    }
-                }
-                const { error } = await db.from('shizai_stocks').delete().eq('id', id);
-                if (error) throw error;
-                fetchStocks();
-            } catch (err) {
-                alert("削除エラー: " + err.message);
+            if (!confirm("完全に削除しますか？")) return;
+            const target = currentStocksData.find(i => i.id === id);
+            if (target && target.image_url) {
+                const path = extractStoragePath(target.image_url);
+                if (path) await db.storage.from('shizai-images').remove([path]);
             }
+            await db.from('shizai_stocks').delete().eq('id', id);
+            fetchStocks();
         }
 
         function enterEditMode(id) { editingId = id; renderStockList(); }
         function cancelEdit() { editingId = null; renderStockList(); }
 
         async function saveEdit(id) {
-            const nextDrug = document.getElementById(`edit-drug-${id}`).value.trim();
-            const nextShizai = document.getElementById(`edit-shizai-${id}`).value.trim();
-            const nextCurrent = parseInt(document.getElementById(`edit-current-${id}`).value) || 0;
-            const nextMin = parseInt(document.getElementById(`edit-min-${id}`).value) || 0;
-            const nextContents = document.getElementById(`edit-contents-${id}`).value.trim();
-            const nextImageUrl = document.getElementById(`edit-image-url-${id}`).value.trim();
-            const nextOrderUrl = document.getElementById(`edit-order-url-${id}`).value.trim();
-            const nextPhoneName = document.getElementById(`edit-phone-name-${id}`).value.trim();
-            const nextPhoneNumber = document.getElementById(`edit-phone-number-${id}`).value.trim();
-
-            if (!nextDrug || !nextShizai) { alert("薬品名と資材名称は空欄にできません。"); return; }
-
-            const { error } = await db.from('shizai_stocks')
-                .update({ 
-                    drug_name: nextDrug, 
-                    shizai_name: nextShizai, 
-                    current_stock: nextCurrent, 
-                    min_stock: nextMin,
-                    contents: nextContents, 
-                    image_url: nextImageUrl,
-                    order_type: 'hybrid',
-                    order_url: nextOrderUrl,
-                    phone_name: nextPhoneName,
-                    phone_number: nextPhoneNumber
-                })
-                .eq('id', id);
-
-            if (error) {
-                alert("修正保存エラー: " + error.message);
-            } else {
-                editingId = null;
-                fetchStocks(); 
-            }
+            const drug = document.getElementById(`edit-drug-${id}`).value;
+            const shizai = document.getElementById(`edit-shizai-${id}`).value;
+            const current = parseInt(document.getElementById(`edit-current-${id}`).value);
+            const min = parseInt(document.getElementById(`edit-min-${id}`).value);
+            const contents = document.getElementById(`edit-contents-${id}`).value;
+            const url = document.getElementById(`edit-image-url-${id}`).value;
+            if (!drug || !shizai) return;
+            await db.from('shizai_stocks').update({ drug_name: drug, shizai_name: shizai, current_stock: current, min_stock: min, contents: contents, image_url: url }).eq('id', id);
+            editingId = null; fetchStocks();
         }
 
-        function openInfoPopup(event, shizaiName, drugName, contents) {
+        function openInfoPopup(event, shizai, drug, contents) {
             event.stopPropagation();
-            document.getElementById("popup-title").innerText = "⚠️ 資材の備考・内訳";
-            document.getElementById("popup-shizai-name").innerText = shizaiName;
-            document.getElementById("popup-drug-name").innerText = `対象薬品: ${drugName}`;
-            const contentsElement = document.getElementById("popup-contents");
-            contentsElement.innerText = contents;
-            contentsElement.classList.remove("hidden");
+            document.getElementById("popup-title").innerText = "⚠️ 備考・内訳";
+            document.getElementById("popup-shizai-name").innerText = shizai;
+            document.getElementById("popup-drug-name").innerText = drug;
+            const c = document.getElementById("popup-contents");
+            c.innerText = contents; c.classList.remove("hidden");
             document.getElementById("popup-image-container").classList.add("hidden");
             document.getElementById("info-popup").classList.remove("hidden");
         }
 
-        function openImagePopup(event, shizaiName, drugName, imageUrl) {
+        function openImagePopup(event, shizai, drug, url) {
             event.stopPropagation();
-            document.getElementById("popup-title").innerText = "📷 資材写真の拡大";
-            document.getElementById("popup-shizai-name").innerText = shizaiName;
-            document.getElementById("popup-drug-name").innerText = `対象薬品: ${drugName}`;
+            document.getElementById("popup-title").innerText = "📷 写真拡大";
+            document.getElementById("popup-shizai-name").innerText = shizai;
+            document.getElementById("popup-drug-name").innerText = drug;
             document.getElementById("popup-contents").classList.add("hidden");
-            const imgContainer = document.getElementById("popup-image-container");
-            document.getElementById("popup-image").src = imageUrl;
-            imgContainer.classList.remove("hidden");
+            const i = document.getElementById("popup-image");
+            i.src = url; document.getElementById("popup-image-container").classList.remove("hidden");
             document.getElementById("info-popup").classList.remove("hidden");
         }
 
-        function closeInfoPopup() {
-            document.getElementById("info-popup").classList.add("hidden");
-        }
+        function closeInfoPopup() { document.getElementById("info-popup").classList.add("hidden"); }
     </script>
     
     <div id="info-popup" class="fixed inset-0 bg-black bg-opacity-60 z-50 flex items-center justify-center p-4 hidden" onclick="closeInfoPopup()">
         <div class="bg-white rounded-2xl max-w-sm w-full p-5 shadow-2xl space-y-2.5" onclick="event.stopPropagation();">
             <div class="flex justify-between items-center border-b pb-1.5">
-                <span id="popup-title" class="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-0.5 rounded">ポップアップ</span>
-                <button onclick="closeInfoPopup()" class="text-gray-400 hover:text-gray-600 text-xl font-bold px-1">✕</button>
+                <span id="popup-title" class="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-0.5 rounded"></span>
+                <button onclick="closeInfoPopup()" class="text-gray-400 font-bold px-1">✕</button>
             </div>
             <div class="pt-1">
-                <h4 id="popup-shizai-name" class="font-bold text-gray-800 text-base leading-tight">資材名</h4>
-                <p class="text-xxs text-gray-400 font-medium mt-0.5" id="popup-drug-name">薬品名</p>
+                <h4 id="popup-shizai-name" class="font-bold text-gray-800 text-base leading-tight"></h4>
+                <p id="popup-drug-name" class="text-xxs text-gray-400 font-medium mt-0.5"></p>
             </div>
             <div id="popup-image-container" class="mt-2 text-center hidden">
-                <img id="popup-image" src="" class="w-full h-auto max-h-64 object-contain rounded-xl border bg-gray-50 shadow-inner">
+                <img id="popup-image" src="" class="w-full h-auto max-h-64 object-contain rounded-xl border bg-gray-50">
             </div>
-            <div class="bg-orange-50 border border-orange-100 rounded-xl p-3 text-sm text-gray-700 whitespace-pre-wrap leading-relaxed hidden shadow-inner" id="popup-contents"></div>
+            <div id="popup-contents" class="bg-orange-50 border border-orange-100 rounded-xl p-3 text-sm text-gray-700 whitespace-pre-wrap hidden"></div>
             <button onclick="closeInfoPopup()" class="w-full bg-gray-800 hover:bg-gray-900 text-white font-bold py-2.5 rounded-xl text-sm shadow-sm transition mt-2">閉じる</button>
         </div>
     </div>
