@@ -785,7 +785,7 @@
                     `;
                 }
 
-                const cardHtml = `
+                    const cardHtml = `
                     <div onclick="toggleDetails(${item.id})" class="p-3 rounded-xl shadow-sm border ${cardBorder} transition cursor-pointer select-none">
                         <div class="flex justify-between items-start text-sm">
                             <div class="flex-1 pr-2 min-w-0 flex items-center space-x-2.5">
@@ -798,9 +798,14 @@
                                     </div>
                                 </div>
                             </div>
-                            <div class="flex items-center space-x-1.5 flex-shrink-0 pt-0.5">
-                                ${statusBadge}
-                                <span id="arrow-${item.id}" class="text-xs text-gray-400 font-bold w-3 text-center">${arrowChar}</span>
+                            <div class="flex flex-col items-end space-y-1.5 flex-shrink-0 pt-0.5">
+                                <div class="flex items-center space-x-1.5">
+                                    ${statusBadge}
+                                    <span id="arrow-${item.id}" class="text-xs text-gray-400 font-bold w-3 text-center">${arrowChar}</span>
+                                </div>
+                                <div class="text-xs font-bold text-gray-600 pr-4">
+                                    ${item.current_stock}個
+                                </div>
                             </div>
                         </div>
                         
