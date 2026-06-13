@@ -842,7 +842,6 @@
                     const displayShizai = truncateString(shizai, 12);
 
                     return {
-                        // 🌟 カッコを外してシンプルな2行の文字列として渡します
                         label: [displayDrug, displayShizai],
                         value: summaryMap[key]
                     };
@@ -907,23 +906,16 @@
                                     maxRotation: 0,
                                     minRotation: 0,
                                     mirror: false,
-                                    padding: 8,
                                     
-                                    // 🌟 修正ポイント①：標準の描画色を透明にして、カスタム描画と重複しないようにする
-                                    color: 'transparent',
-                                    
-                                    // 🌟 修正ポイント②：2行目のフォントを個別にデザイン変更するスクリプトプラグイン
-                                    font: function(context) {
-                                        // 軸ラベルの通常のフォント定義（外枠用）
-                                        return { size: 10, weight: 'bold' };
-                                    }
+                                    // 🌟 修正ポイント①：元のラベルは完全に非表示（透明）化を継続
+                                    color: 'transparent'
                                 }
                             }
                         },
                         layout: {
-                            padding: { left: 0, right: 15, top: 0, bottom: 0 }
+                            // 🌟 修正ポイント②：グラフの棒（プロットエリア）が始まる位置を右にずらして、文字の入る絶対的なスペースを作る
+                            padding: { left: 90, right: 15, top: 0, bottom: 0 }
                         },
-                        // 🌟 修正ポイント③：Y軸のラベルテキストを1行目と2行目でカスタム装飾して描き分ける
                         plugins: [{
                             id: 'customYAxisLabels',
                             afterDraw: (chart) => {
@@ -935,19 +927,20 @@
                                     const label = y.getLabelForTick(tick.value);
                                     if (!Array.isArray(label)) return;
 
-                                    // 各項目の基準位置（Y座標）を取得
                                     const yPos = y.getPixelForTick(index);
-                                    // 左寄せ（crossAlign: start）位置のX座標
-                                    const xPos = y.left;
+                                    
+                                    // 🌟 修正ポイント③：描画のスタート位置を「画面の左端（5pxの安全マージン）」に固定
+                                    // これにより、グラフの位置に関係なく必ず画面左端から綺麗に左寄せで始まります
+                                    const xPos = 5;
 
                                     // --- 1行目: 薬剤名（太字・濃いグレー） ---
                                     ctx.font = 'bold 10px sans-serif';
-                                    ctx.fillStyle = '#1f2937'; // 濃いグレー (gray-800相当)
+                                    ctx.fillStyle = '#1f2937';
                                     ctx.fillText(label[0], xPos, yPos - 3);
 
                                     // --- 2行目: 資材名（細字・小さめ・薄いグレー） ---
                                     ctx.font = 'normal 9px sans-serif';
-                                    ctx.fillStyle = '#9ca3af'; // 薄いグレー (gray-400相当)
+                                    ctx.fillStyle = '#9ca3af';
                                     ctx.fillText(label[1], xPos, yPos + 9);
                                 });
                                 ctx.restore();
