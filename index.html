@@ -861,6 +861,14 @@
                 const chartLabels = topItems.map(i => i.label);
                 const chartValues = topItems.map(i => i.value);
 
+                // 🌟 【新規追加】データ数（項目数）に応じて、キャンバスの親要素の高さを動的に変更する
+                // 1項目あたり約45pxとして計算し、データが少なくても無駄に縦に広がらないようにします
+                const chartContainer = canvas.parentElement;
+                if (chartContainer) {
+                    const dynamicHeight = Math.max(topItems.length * 45, 120); 
+                    chartContainer.style.height = `${dynamicHeight}px`;
+                }
+
                 if (myChart) myChart.destroy();
                 
                 const ctx = canvas.getContext('2d');
@@ -874,17 +882,20 @@
                             backgroundColor: 'rgba(37, 99, 235, 0.2)',
                             borderColor: 'rgba(37, 99, 235, 1)',
                             borderWidth: 1.5,
-                            borderRadius: 6,
+                            borderRadius: 4,
                             
-                            // 🌟 修正ポイント①：棒の太さを細くコントロールする設定
-                            barThickness: 16,        // 棒自体の太さを16pxに固定
-                            maxBarThickness: 20      // データ数が極端に少なくてもこれ以上太くならない
+                            // 🌟 修正ポイント①：1本の太さを14pxに少しだけ絞る
+                            barThickness: 14,
+                            
+                            // 🌟 修正ポイント②：上下の項目同士の間隔を限界まで詰める（近づける）
+                            categoryPercentage: 0.95, 
+                            barPercentage: 0.95
                         }]
                     },
                     options: {
                         indexAxis: 'y',
                         responsive: true,
-                        maintainAspectRatio: false,
+                        maintainAspectRatio: false, // 動的サイズ変更を有効にするため必須
                         plugins: {
                             legend: { display: false }
                         },
@@ -902,15 +913,12 @@
                                     maxRotation: 0,
                                     minRotation: 0,
                                     mirror: false,
-                                    
-                                    // 🌟 修正ポイント②：文字の右端とグラフ（棒）の間にスペースを空ける
-                                    padding: 12
+                                    padding: 8 // 右端とのスペースを 12 → 8 に微調整して引き締め
                                 }
                             }
                         },
                         layout: {
-                            // 🌟 修正ポイント③：左端の無駄なスペースを詰め、右に少し余裕を持たせる
-                            padding: { left: 0, right: 15, top: 10, bottom: 10 }
+                            padding: { left: 0, right: 15, top: 0, bottom: 0 }
                         }
                     }
                 });
