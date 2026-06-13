@@ -799,7 +799,7 @@
             });
         }
 
-       // ================= 消費グラフのロジック =================
+      　// ================= 消費グラフのロジック =================
         async function fetchChartData() {
             const canvas = document.getElementById("consumptionChart");
             const emptyMsg = document.getElementById("chart-empty-message");
@@ -842,7 +842,8 @@
                     const displayShizai = truncateString(shizai, 12);
 
                     return {
-                        label: [displayDrug, `(${displayShizai})`],
+                        // 🌟 カッコを外してシンプルな2行テキストに。メリハリはフォント側で制御します
+                        label: [displayDrug, displayShizai],
                         value: summaryMap[key]
                     };
                 }).sort((a, b) => b.value - a.value);
@@ -861,8 +862,7 @@
                 const chartLabels = topItems.map(i => i.label);
                 const chartValues = topItems.map(i => i.value);
 
-                // 🌟 【新規追加】データ数（項目数）に応じて、キャンバスの親要素の高さを動的に変更する
-                // 1項目あたり約45pxとして計算し、データが少なくても無駄に縦に広がらないようにします
+                // データ数（項目数）に応じて、キャンバスの親要素の高さを動的に変更する
                 const chartContainer = canvas.parentElement;
                 if (chartContainer) {
                     const dynamicHeight = Math.max(topItems.length * 45, 120); 
@@ -883,11 +883,7 @@
                             borderColor: 'rgba(37, 99, 235, 1)',
                             borderWidth: 1.5,
                             borderRadius: 4,
-                            
-                            // 🌟 修正ポイント①：1本の太さを14pxに少しだけ絞る
                             barThickness: 14,
-                            
-                            // 🌟 修正ポイント②：上下の項目同士の間隔を限界まで詰める（近づける）
                             categoryPercentage: 0.95, 
                             barPercentage: 0.95
                         }]
@@ -895,7 +891,7 @@
                     options: {
                         indexAxis: 'y',
                         responsive: true,
-                        maintainAspectRatio: false, // 動的サイズ変更を有効にするため必須
+                        maintainAspectRatio: false,
                         plugins: {
                             legend: { display: false }
                         },
@@ -906,19 +902,35 @@
                             },
                             y: {
                                 ticks: {
-                                    font: { size: 10, weight: 'bold' },
-                                    color: '#374151',
                                     autoSkip: false,
                                     crossAlign: 'start',
                                     maxRotation: 0,
                                     minRotation: 0,
                                     mirror: false,
-                                    padding: 8 // 右端とのスペースを 12 → 8 に微調整して引き締め
+                                    padding: 8,
+                                    
+                                    // 🌟 修正ポイント①：1行目(薬剤名)と2行目(資材名)の色をそれぞれ別々に指定
+                                    color: function(context) {
+                                        // context.nestedIndex が 0（1行目）なら濃いグレー、1（2行目）なら薄いグレーにする
+                                        return context.nestedIndex === 0 ? '#1f2937' : '#9ca3af';
+                                    },
+                                    
+                                    // 🌟 修正ポイント②：1行目と2行目の「サイズ」と「太さ」に強弱（メリハリ）をつける
+                                    font: function(context) {
+                                        if (context.nestedIndex === 0) {
+                                            // 1行目: 薬剤名は大きく、太字
+                                            return { size: 10, weight: 'bold' };
+                                        } else {
+                                            // 2行目: 資材名は一回り小さく、通常の太さ
+                                            return { size: 8.5, weight: 'normal' };
+                                        }
+                                    }
                                 }
                             }
                         },
                         layout: {
-                            padding: { left: 0, right: 15, top: 0, bottom: 0 }
+                            // 文字が絶対消えないように左側余白を安全なサイズ（15px）に固定。文字は自動計算で綺麗に収まります
+                            padding: { left: 15, right: 15, top: 0, bottom: 0 }
                         }
                     }
                 });
