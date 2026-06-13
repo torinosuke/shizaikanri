@@ -784,11 +784,10 @@
                         </span>
                     `;
                 }
-
                     const cardHtml = `
                     <div onclick="toggleDetails(${item.id})" class="p-3 rounded-xl shadow-sm border ${cardBorder} transition cursor-pointer select-none">
-                        <div class="flex justify-between items-start text-sm">
-                            <div class="flex-1 pr-2 min-w-0 flex items-center space-x-2.5">
+                        <div class="flex justify-between items-stretch text-sm min-h-[44px]">
+                            <div class="flex-1 pr-4 min-w-0 flex items-center space-x-2.5">
                                 ${thumbnailHtml}
                                 <div class="min-w-0 flex-1">
                                     <span class="text-xxs text-gray-400 block truncate font-medium mb-0.5">${item.drug_name}</span>
@@ -798,12 +797,13 @@
                                     </div>
                                 </div>
                             </div>
-                            <div class="flex flex-col items-end space-y-1.5 flex-shrink-0 pt-0.5">
-                                <div class="flex items-center space-x-1.5">
+                            
+                            <div class="relative w-24 flex-shrink-0 pt-0.5">
+                                <div class="absolute top-0 right-0 flex items-center space-x-1">
                                     ${statusBadge}
                                     <span id="arrow-${item.id}" class="text-xs text-gray-400 font-bold w-3 text-center">${arrowChar}</span>
                                 </div>
-                                <div class="text-xs font-bold text-gray-600 pr-4">
+                                <div class="absolute bottom-0 right-4 text-xs font-bold text-gray-600 whitespace-nowrap">
                                     ${item.current_stock}個
                                 </div>
                             </div>
