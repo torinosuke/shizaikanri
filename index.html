@@ -387,7 +387,6 @@
                 alert("登録エラー: " + error.message);
             } else { 
                 alert("登録しました！"); 
-                // ✨ フォームに入力された値をリセットし、フォーム起動前の全一覧画面に安全に遷移
                 document.getElementById("input-shizai").value = "";
                 document.getElementById("input-current").value = "0";
                 document.getElementById("input-min").value = "2";
@@ -475,10 +474,10 @@
             else listTitleElement.innerText = `「${selectedDrugFilter}」の資材一覧`;
 
             currentStocksData.forEach(item => {
-                // アラートセクションも在庫0以下または最低在庫未満を判定
-                if ((item.current_stock <= 0 || item.current_stock < item.min_stock) && !item.is_ordering) {
+                // ✨ 【修正】上部アラート部分の判定も「現在庫 < 設定在庫」で赤判定
+                if (!item.is_ordering && (item.current_stock < item.min_stock || item.current_stock <= 0)) {
                     hasAlert = true;
-                    const badgeText = item.current_stock <= 0 ? "在庫なし" : "要発注";
+                    const badgeText = item.current_stock < item.min_stock ? "要発注" : "在庫なし";
                     alertListElement.innerHTML += `<div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-2 text-sm rounded shadow-sm"><strong>${item.drug_name}</strong>: ${item.shizai_name} (${badgeText})</div>`;
                 }
             });
@@ -587,7 +586,10 @@
                     return;
                 }
 
-                // ✨ 【修正ポイント】「在庫なし」状態の厳密判定分岐
+                // ✨ 【修正判定ロジックとデザイン】
+                // 1. 取り寄せ中：黄表示
+                // 2. 在庫なし(0以下)：赤ではなくグレー表示
+                // 3. 要発注(現在庫 < 最低在庫)：赤表示に変更
                 let statusBadge = `<span class="bg-green-100 text-green-800 text-xs font-bold px-2 py-0.5 rounded text-center">在庫あり</span>`;
                 let cardBorder = "border-gray-200 bg-white";
                 
@@ -595,11 +597,13 @@
                     statusBadge = `<span class="bg-yellow-100 text-yellow-800 text-xs font-bold px-2 py-0.5 rounded text-center">取り寄せ中</span>`;
                     cardBorder = "border-yellow-300 bg-yellow-50";
                 } else if (item.current_stock <= 0) {
-                    statusBadge = `<span class="bg-red-200 text-red-900 text-xs font-bold px-2 py-0.5 rounded text-center">在庫なし</span>`;
-                    cardBorder = "border-red-400 bg-red-50";
+                    // 🌟 「在庫なし」をグレー表示にする
+                    statusBadge = `<span class="bg-gray-200 text-gray-800 text-xs font-bold px-2 py-0.5 rounded text-center">在庫なし</span>`;
+                    cardBorder = "border-gray-300 bg-gray-50 opacity-90";
                 } else if (item.current_stock < item.min_stock) {
+                    // 🌟 「要発注 (現在庫 < 設定在庫)」を警告の赤表示にする
                     statusBadge = `<span class="bg-red-100 text-red-800 text-xs font-bold px-2 py-0.5 rounded text-center">要発注</span>`;
-                    cardBorder = "border-red-200 bg-red-50";
+                    cardBorder = "border-red-300 bg-red-50";
                 }
 
                 const thumbnailHtml = item.image_url ? `<img src="${item.image_url}" onclick="openImagePopup(event, '${item.shizai_name}', '${item.drug_name}', '${item.image_url}')" class="w-10 h-10 object-cover rounded border flex-shrink-0 bg-white">` : `<div class="w-10 h-10 rounded border flex-shrink-0 bg-gray-100 flex items-center justify-center text-gray-400 text-lg">📷</div>`;
@@ -637,9 +641,11 @@
                             </div>
                             ${item.is_ordering ? `<div class="flex items-center space-x-2 pt-1 border-t border-dashed border-gray-200"><select id="arrival-count-${item.id}" class="w-16 p-1 border rounded text-sm"><option value="1">1</option><option value="5" selected>5</option><option value="10">10</option></select><button onclick="executeArrival(${item.id}, ${item.current_stock})" class="flex-1 bg-green-600 text-white text-xs font-bold py-1.5 rounded-lg">入荷完了</button></div>` : ''}
                             
-                            <div class="text-xxs text-gray-500 bg-gray-50 p-2 rounded space-y-0.5 border border-dashed">
-                                <div>💻 URL: ${item.order_url ? `<a href="${item.order_url}" target="_blank" class="text-blue-600 underline break-all">${item.order_url}</a>` : '未登録'}</div>
-                                <div>📞 連絡先: ${item.phone_name || '未登録'} (${item.phone_number || '番号なし'})</div>
+                            <div class="flex items-center space-x-2 pt-1 border-t border-dashed border-gray-200">
+                                <div class="text-xxs text-gray-500 bg-gray-50 p-2 rounded space-y-0.5 border border-dashed w-full">
+                                    <div>💻 URL: ${item.order_url ? `<a href="${item.order_url}" target="_blank" class="text-blue-600 underline break-all">${item.order_url}</a>` : '未登録'}</div>
+                                    <div>📞 連絡先: ${item.phone_name || '未登録'} (${item.phone_number || '番号なし'})</div>
+                                </div>
                             </div>
 
                             <div class="flex justify-between items-center text-xs text-gray-400 pt-1.5 border-t border-dashed border-gray-100">
@@ -691,14 +697,12 @@
             const contents = document.getElementById(`edit-contents-${id}`).value.trim();
             const url = document.getElementById(`edit-image-url-${id}`).value.trim();
             
-            // ✨ 【修正ポイント】編集欄から新しく入力された発注先情報3つを取得して変数に格納
             const orderUrl = document.getElementById(`edit-order-url-${id}`).value.trim();
             const phoneName = document.getElementById(`edit-phone-name-${id}`).value.trim();
             const phoneNumber = document.getElementById(`edit-phone-number-${id}`).value.trim();
             
             if (!drug || !shizai) return;
 
-            // ✨ 【修正ポイント】update対象オブジェクトに発注関連の3カラムを連携追加
             await db.from('shizai_stocks').update({ 
                 drug_name: drug, 
                 shizai_name: shizai, 
