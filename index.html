@@ -912,7 +912,7 @@
             else fetchStocks();
         }
 
-        // 誤タップ防止＆複数対応の払い出し処理
+        // 誤タップ防止＆複数対応の払い出し処理（カスタムモーダル版）
         async function executePayout(id, currentStock) {
             const inputElement = document.getElementById(`payout-count-${id}`);
             const payoutCount = parseInt(inputElement.value, 10) || 0;
@@ -926,14 +926,38 @@
                 return;
             }
             
-            // 🛑 誤タップ防止の確認アラート
-            const confirmed = confirm(`この資材を ${payoutCount} 個 払い出してよろしいですか？`);
-            if (!confirmed) return; // 「キャンセル」が押されたら処理を中断
+            // 情報を一時的に記憶
+            currentPayoutInfo = { id, currentStock, payoutCount };
+            
+            // モーダルの文言を書き換えて表示
+            document.getElementById('payout-modal-message').innerText = `この資材を ${payoutCount} 個 払い出してよろしいですか？`;
+            
+            // OKボタンに処理を結びつける
+            document.getElementById('payout-modal-confirm-btn').onclick = confirmPayoutModal;
+            
+            // モーダルを表示
+            document.getElementById('payout-confirm-modal').classList.remove('hidden');
+        }
+        // 払い出し一時保持用の変数
+        let currentPayoutInfo = null;
+
+        // モーダルを閉じる処理
+        function cancelPayoutModal() {
+            document.getElementById('payout-confirm-modal').classList.add('hidden');
+            currentPayoutInfo = null;
+        }
+
+        // モーダルでOKが押された時の実際の処理
+        async function confirmPayoutModal() {
+            if (!currentPayoutInfo) return;
+            const { id, currentStock, payoutCount } = currentPayoutInfo;
+            
+            // モーダルを即座に閉じる
+            document.getElementById('payout-confirm-modal').classList.add('hidden');
             
             const newStock = currentStock - payoutCount;
             
-            // Supabaseを更新（既存のupdateStockAndFetchまたは直接updateの仕様に合わせる）
-            // 動作バージョン最新.txtのupdateStock関数の仕様に合わせて、安全にdbを直接更新します
+            // Supabaseを更新
             const { error } = await db.from('shizai_stocks')
                 .update({ current_stock: newStock })
                 .eq('id', id);
@@ -941,12 +965,13 @@
             if (error) {
                 alert("払い出し処理エラー: " + error.message);
             } else {
-                // 成功トーストを表示する（元のコードに実装されている共通トースト関数を利用）
                 if (typeof showToast === "function") {
                     showToast(`払い出しが完了しました（-${payoutCount}個）`);
                 }
                 fetchStocks(); // 一覧を再読み込み
             }
+            
+            currentPayoutInfo = null; // 変数をクリア
         }
         
         async function executeArrival(id, currentStock) {
@@ -1077,6 +1102,27 @@
             </div>
             <div class="bg-orange-50 border border-orange-100 rounded-xl p-3 text-sm text-gray-700 whitespace-pre-wrap leading-relaxed hidden shadow-inner" id="popup-contents"></div>
             <button onclick="closeInfoPopup()" class="w-full bg-gray-800 hover:bg-gray-900 text-white font-bold py-2.5 rounded-xl text-sm shadow-sm transition mt-2">閉じる</button>
+        </div>
+    </div>
+    <div id="payout-confirm-modal" class="fixed inset-0 bg-black bg-opacity-60 z-50 flex items-center justify-center p-4 hidden" onclick="cancelPayoutModal()">
+        <div class="bg-white rounded-2xl max-w-sm w-full p-5 shadow-2xl space-y-4" onclick="event.stopPropagation();">
+            <div class="text-center pt-2">
+                <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-amber-100 mb-3">
+                    <span class="text-amber-600 text-xl font-bold">⚠️</span>
+                </div>
+                <h4 class="font-bold text-gray-900 text-base leading-tight">払い出しの確認</h4>
+                <p id="payout-modal-message" class="text-sm text-gray-500 mt-2 font-medium">
+                    この資材を 1 個 払い出してよろしいですか？
+                </p>
+            </div>
+            <div class="grid grid-cols-2 gap-3 pt-2 border-t border-gray-100">
+                <button onclick="cancelPayoutModal()" class="w-full bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold py-2.5 rounded-xl text-sm transition">
+                    キャンセル
+                </button>
+                <button id="payout-modal-confirm-btn" class="w-full bg-gray-800 hover:bg-gray-900 text-white font-bold py-2.5 rounded-xl text-sm shadow-sm transition">
+                    OK
+                </button>
+            </div>
         </div>
     </div>
 </body>
