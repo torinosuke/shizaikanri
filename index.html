@@ -829,8 +829,8 @@
                     summaryMap[compositeKey] = (summaryMap[compositeKey] || 0) + count;
                 });
 
-                // 【修正：固定長化および個別トリミング用のヘルパー関数】
-                const truncateString = (str, maxLength = 14) => {
+                // 【確実な固定長化のためのヘルパー関数】
+                const truncateString = (str, maxLength = 12) => {
                     if (!str) return "";
                     return str.length > maxLength ? str.substring(0, maxLength) + "..." : str;
                 };
@@ -838,12 +838,12 @@
                 const sortedData = Object.keys(summaryMap).map(key => {
                     const [drug, shizai] = key.split('::');
                     
-                    // 【修正】1行（1項目）の表示文字数を最大14文字に制限し、超えたら「...」にする
-                    const displayDrug = truncateString(drug, 14);
-                    const displayShizai = truncateString(shizai, 14);
+                    // スマホ画面の幅を考慮し、1行あたり最大12文字で確実にカット
+                    const displayDrug = truncateString(drug, 12);
+                    const displayShizai = truncateString(shizai, 12);
 
                     return {
-                        // 配列形式にすることでChart.jsが自動的に2行に分けてレンダリング（自動折り返しを表現）
+                        // 2つの要素を持つ配列にすることで、1行目と2行目に強制分割（折り返し）
                         label: [displayDrug, `(${displayShizai})`],
                         value: summaryMap[key]
                     };
@@ -897,18 +897,19 @@
                                     color: '#374151',
                                     autoSkip: false, // ラベルをすべて強制表示
                                     
-                                    // 【追加ポイント①】文頭（左側）を綺麗に揃えて左寄せにする
-                                    crossAlign: 'start', 
+                                    // 【折り返し・左寄せを確実に有効化する設定群】
+                                    crossAlign: 'start', // 文頭（左側）を綺麗に揃えて左寄せにする
+                                    maxRotation: 0,      // 文字が斜めに傾いて折り返しが崩れるのを防ぐ
+                                    minRotation: 0,
                                     
-                                    // 【追加ポイント②】文字の傾きを防いで折り返し表示を固定する
-                                    maxRotation: 0,
-                                    minRotation: 0
+                                    // 配列で渡された複数の文字列を個別の行として描画することを保証
+                                    mirror: false
                                 }
                             }
                         },
                         layout: {
-                            // 【修正】左寄せ・折り返しにより、テキストが左端に寄りすぎるのを防ぐ余白調整
-                            padding: { left: 15, right: 10 }
+                            // 左寄せ・折り返し時に文字が左端の画面外に隠れてしまうのを防ぐため、少し左余白を広げます
+                            padding: { left: 20, right: 10 }
                         }
                     }
                 });
