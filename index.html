@@ -827,9 +827,13 @@
 
                                 ${item.is_ordering ? `
                                     <div class="flex items-center space-x-2 pt-1 border-t border-dashed border-gray-200">
-                                        <select id="arrival-count-${item.id}" class="w-18 p-1 text-center text-sm border rounded font-bold bg-gray-50 text-gray-700 outline-none">
-                                            <option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5" selected>5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option>
-                                        </select>
+                                        <input 
+                                            type="number" 
+                                            id="arrival-count-${item.id}" 
+                                            value="1" 
+                                            min="1" 
+                                            class="w-16 p-1 text-center text-sm border rounded font-bold bg-gray-50 text-gray-700 outline-none"
+                                        >
                                         <span class="text-xs text-gray-500">個が</span>
                                         <button onclick="executeArrival(${item.id}, ${item.current_stock})" class="flex-1 bg-green-600 hover:bg-green-700 text-white text-xs font-bold py-1.5 px-2 rounded-lg shadow-sm">入荷完了</button>
                                     </div>
@@ -875,11 +879,27 @@
 
         async function executeArrival(id, currentStock) {
             const inputElement = document.getElementById(`arrival-count-${id}`);
-            const arrivalCount = parseInt(inputElement.value) || 0;
-            if (arrivalCount <= 0) { alert("1以上の数字を入力してください。"); return; }
-            const { error } = await db.from('shizai_stocks').update({ current_stock: currentStock + arrivalCount, is_ordering: false }).eq('id', id);
-            if (error) alert("入荷処理エラー: " + error.message);
-            else fetchStocks();
+            // input[type="number"] から確実に10進数の数値として取得（予期せぬ挙動防止）
+            const arrivalCount = parseInt(inputElement.value, 10) || 0;
+            
+            if (arrivalCount <= 0) { 
+                alert("1以上の数字を入力してください。"); 
+                return; 
+            }
+            
+            // 既存のエラーハンドリングをそのまま維持してSupabaseを更新
+            const { error } = await db.from('shizai_stocks')
+                .update({ 
+                    current_stock: currentStock + arrivalCount, 
+                    is_ordering: false 
+                })
+                .eq('id', id);
+                
+            if (error) {
+                alert("入荷処理エラー: " + error.message);
+            } else {
+                fetchStocks(); // 成功したら一覧を再読み込み
+            }
         }
 
         async function deleteShizai(id) {
