@@ -180,8 +180,27 @@
         let currentPage = 1;
         const ITEMS_PER_PAGE = 10;
 
-        document.addEventListener("DOMContentLoaded", fetchStocks);
-
+        // ページ読み込み時に初期データを取得し、同時にリアルタイム監視を開始
+        document.addEventListener("DOMContentLoaded", () => {
+            fetchStocks(); // 初期読み込み
+            
+            // 🔄 同時編集コンフリクト防止：リアルタイム同期リスナーの登録
+            db.channel('public:shizai_stocks')
+                .on(
+                    'postgres_changes', 
+                    { 
+                        event: '*', // INSERT, UPDATE, DELETE すべての変更を監視
+                        schema: 'public', 
+                        table: 'shizai_stocks' 
+                    }, 
+                    (payload) => {
+                        console.log('データベースに変更を検知しました:', payload);
+                        fetchStocks(); // 誰かが更新したら画面を自動で再描画
+                    }
+                )
+                .subscribe();
+        });
+        
         function toggleAddForm() {
             const form = document.getElementById("add-form-section");
             form.classList.toggle("hidden");
