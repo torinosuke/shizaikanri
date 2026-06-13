@@ -485,7 +485,10 @@
             if (error) {
                 alert("登録エラー: " + error.message);
             } else {
-                alert("新しく資材を登録しました！");
+                // 🔔 【変更】URLの出ない綺麗なトースト通知に切り替え
+                if (typeof showToast === "function") {
+                    showToast("新しく資材を登録しました！");
+                }
                 textInputElement.value = "";
                 textInputElement.classList.add("hidden");
                 document.getElementById("input-shizai").value = "";
