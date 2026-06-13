@@ -838,23 +838,21 @@
 
                             <div class="space-y-2">
                                 <div class="grid grid-cols-2 gap-2">
-                                    <div class="flex items-center space-x-0.5 bg-gray-100 p-0.5 rounded-lg border border-gray-200">
-                                        <button onclick="adjustCount('payout-count-${item.id}', -1, 1, ${item.current_stock})" class="w-6 h-7 flex items-center justify-center font-bold text-gray-500 bg-white rounded shadow-sm select-none active:bg-gray-200" ${item.current_stock <= 0 ? 'disabled' : ''}>−</button>
+                                    <div class="flex items-center space-x-1">
                                         <input 
                                             type="number" 
                                             id="payout-count-${item.id}" 
                                             value="1" 
                                             min="1" 
                                             max="${item.current_stock}"
-                                            class="w-8 h-7 text-center text-sm font-bold bg-transparent text-gray-700 outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                            readonly
+                                            class="w-12 p-1 text-center text-sm border rounded font-bold bg-white text-gray-700 outline-none"
                                             ${item.current_stock <= 0 ? 'disabled' : ''}
                                         >
-                                        <button onclick="adjustCount('payout-count-${item.id}', 1, 1, ${item.current_stock})" class="w-6 h-7 flex items-center justify-center font-bold text-gray-500 bg-white rounded shadow-sm select-none active:bg-gray-200" ${item.current_stock <= 0 ? 'disabled' : ''}>＋</button>
-                                        <button onclick="executePayout(${item.id}, ${item.current_stock})" class="flex-1 bg-gray-800 hover:bg-gray-900 text-white text-xxs font-bold h-7 rounded shadow-sm ml-1 select-none" ${item.current_stock <= 0 ? 'disabled class="opacity-50"' : ''}>
+                                        <button onclick="executePayout(${item.id}, ${item.current_stock})" class="flex-1 bg-gray-800 hover:bg-gray-900 text-white text-xs font-bold py-2 px-1 rounded-lg shadow-sm" ${item.current_stock <= 0 ? 'disabled class="opacity-50"' : ''}>
                                             払い出し
                                         </button>
                                     </div>
+
                                     ${item.is_ordering ? `
                                         <button onclick="toggleOrderStatus(${item.id}, true)" class="bg-gray-400 text-white text-xs font-bold py-2 px-3 rounded-lg shadow-sm">取り寄せを取消</button>
                                     ` : `
@@ -864,20 +862,15 @@
 
                                 ${item.is_ordering ? `
                                     <div class="flex items-center space-x-2 pt-1 border-t border-dashed border-gray-200">
-                                        <div class="flex items-center space-x-0.5 bg-gray-100 p-0.5 rounded-lg border border-gray-200">
-                                            <button onclick="adjustCount('arrival-count-${item.id}', -1, 1, 999)" class="w-6 h-7 flex items-center justify-center font-bold text-gray-500 bg-white rounded shadow-sm select-none active:bg-gray-200">−</button>
-                                            <input 
-                                                type="number" 
-                                                id="arrival-count-${item.id}" 
-                                                value="1" 
-                                                min="1" 
-                                                class="w-8 h-7 text-center text-sm font-bold bg-transparent text-gray-700 outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                                readonly
-                                            >
-                                            <button onclick="adjustCount('arrival-count-${item.id}', 1, 1, 999)" class="w-6 h-7 flex items-center justify-center font-bold text-gray-500 bg-white rounded shadow-sm select-none active:bg-gray-200">＋</button>
-                                        </div>
+                                        <input 
+                                            type="number" 
+                                            id="arrival-count-${item.id}" 
+                                            value="1" 
+                                            min="1" 
+                                            class="w-16 p-1 text-center text-sm border rounded font-bold bg-gray-50 text-gray-700 outline-none"
+                                        >
                                         <span class="text-xs text-gray-500">個が</span>
-                                        <button onclick="executeArrival(${item.id}, ${item.current_stock})" class="flex-1 bg-green-600 hover:bg-green-700 text-white text-xs font-bold py-1.5 px-2 rounded-lg shadow-sm select-none">入荷完了</button>
+                                        <button onclick="executeArrival(${item.id}, ${item.current_stock})" class="flex-1 bg-green-600 hover:bg-green-700 text-white text-xs font-bold py-1.5 px-2 rounded-lg shadow-sm">入荷完了</button>
                                     </div>
                                 ` : ''}
                             </div>
@@ -919,21 +912,6 @@
             else fetchStocks();
         }
 
-        // ＋−ボタンで数値を安全に増減させる共通処理
-        function adjustCount(inputId, amount, minVal, maxVal) {
-            const inputElement = document.getElementById(inputId);
-            if (!inputElement) return;
-            
-            let currentVal = parseInt(inputElement.value, 10) || minVal;
-            let newVal = currentVal + amount;
-            
-            // 最小値と最大値の制限を超えないようにガード
-            if (newVal < minVal) newVal = minVal;
-            if (newVal > maxVal) newVal = maxVal;
-            
-            inputElement.value = newVal;
-        }
-        
         // 誤タップ防止＆複数対応の払い出し処理（カスタムモーダル版）
         async function executePayout(id, currentStock) {
             const inputElement = document.getElementById(`payout-count-${id}`);
