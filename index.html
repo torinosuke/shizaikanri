@@ -805,14 +805,13 @@
                 }
                     const cardHtml = `
                     <div onclick="toggleDetails(${item.id})" class="p-3 rounded-xl shadow-sm border ${cardBorder} transition cursor-pointer select-none">
-                        <div class="flex justify-between items-start text-sm">
-                            
-                            <div class="flex-1 min-w-0 flex items-center space-x-2.5 pr-3">
+                        <div class="flex justify-between items-stretch text-sm min-h-[44px]">
+                            <div class="flex-1 pr-4 min-w-0 flex items-center space-x-2.5">
                                 ${thumbnailHtml}
                                 <div class="min-w-0 flex-1">
                                     <span class="text-xxs text-gray-400 block truncate font-medium mb-0.5">${item.drug_name}</span>
                                     <div class="flex items-start max-w-full">
-                                        <h3 class="font-bold text-gray-800 text-sm break-all leading-tight">
+                                        <h3 class="font-bold text-gray-800 text-sm break-words leading-tight">
                                             ${(item.shizai_name || '').replace(/[  ]/g, '<br>')}
                                         </h3>
                                         ${infoButtonHtml}
@@ -820,14 +819,15 @@
                                 </div>
                             </div>
                             
-                            <div class="flex-shrink-0 w-24 flex flex-col items-end space-y-3 pt-0.5">
-                                <div class="flex items-center space-x-1">
+                            <div class="relative w-24 flex-shrink-0 pt-0.5">
+                                <div class="absolute top-0 right-0 flex items-center space-x-1">
                                     ${statusBadge}
                                     <span id="arrow-${item.id}" class="text-xs text-gray-400 font-bold w-3 text-center">${arrowChar}</span>
                                 </div>
-                                <span class="text-xs font-bold text-gray-500 whitespace-nowrap">${item.current_stock}個</span>
+                                <div class="absolute bottom-0 right-4 text-xs font-bold text-gray-600 whitespace-nowrap">
+                                    ${item.current_stock}個
+                                </div>
                             </div>
-                            
                         </div>
                         
                         <div id="control-panel-${item.id}" class="${panelClass} mt-3 pt-2 border-t border-gray-100 space-y-3" onclick="event.stopPropagation();">
