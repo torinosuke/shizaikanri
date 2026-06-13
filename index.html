@@ -842,7 +842,8 @@
                     const displayShizai = truncateString(shizai, 12);
 
                     return {
-                        label: [displayDrug, `(${displayShizai})`],
+                        // 🌟 カッコを外してシンプルな2行の文字列として渡します
+                        label: [displayDrug, displayShizai],
                         value: summaryMap[key]
                     };
                 }).sort((a, b) => b.value - a.value);
@@ -861,8 +862,7 @@
                 const chartLabels = topItems.map(i => i.label);
                 const chartValues = topItems.map(i => i.value);
 
-                // 🌟 【新規追加】データ数（項目数）に応じて、キャンバスの親要素の高さを動的に変更する
-                // 1項目あたり約45pxとして計算し、データが少なくても無駄に縦に広がらないようにします
+                // データ数（項目数）に応じて、キャンバスの親要素の高さを動的に変更する
                 const chartContainer = canvas.parentElement;
                 if (chartContainer) {
                     const dynamicHeight = Math.max(topItems.length * 45, 120); 
@@ -883,11 +883,7 @@
                             borderColor: 'rgba(37, 99, 235, 1)',
                             borderWidth: 1.5,
                             borderRadius: 4,
-                            
-                            // 🌟 修正ポイント①：1本の太さを14pxに少しだけ絞る
                             barThickness: 14,
-                            
-                            // 🌟 修正ポイント②：上下の項目同士の間隔を限界まで詰める（近づける）
                             categoryPercentage: 0.95, 
                             barPercentage: 0.95
                         }]
@@ -895,7 +891,7 @@
                     options: {
                         indexAxis: 'y',
                         responsive: true,
-                        maintainAspectRatio: false, // 動的サイズ変更を有効にするため必須
+                        maintainAspectRatio: false,
                         plugins: {
                             legend: { display: false }
                         },
@@ -906,20 +902,57 @@
                             },
                             y: {
                                 ticks: {
-                                    font: { size: 10, weight: 'bold' },
-                                    color: '#374151',
                                     autoSkip: false,
                                     crossAlign: 'start',
                                     maxRotation: 0,
                                     minRotation: 0,
                                     mirror: false,
-                                    padding: 8 // 右端とのスペースを 12 → 8 に微調整して引き締め
+                                    padding: 8,
+                                    
+                                    // 🌟 修正ポイント①：標準の描画色を透明にして、カスタム描画と重複しないようにする
+                                    color: 'transparent',
+                                    
+                                    // 🌟 修正ポイント②：2行目のフォントを個別にデザイン変更するスクリプトプラグイン
+                                    font: function(context) {
+                                        // 軸ラベルの通常のフォント定義（外枠用）
+                                        return { size: 10, weight: 'bold' };
+                                    }
                                 }
                             }
                         },
                         layout: {
                             padding: { left: 0, right: 15, top: 0, bottom: 0 }
-                        }
+                        },
+                        // 🌟 修正ポイント③：Y軸のラベルテキストを1行目と2行目でカスタム装飾して描き分ける
+                        plugins: [{
+                            id: 'customYAxisLabels',
+                            afterDraw: (chart) => {
+                                const { ctx, scales: { y } } = chart;
+                                if (!y) return;
+
+                                ctx.save();
+                                y.ticks.forEach((tick, index) => {
+                                    const label = y.getLabelForTick(tick.value);
+                                    if (!Array.isArray(label)) return;
+
+                                    // 各項目の基準位置（Y座標）を取得
+                                    const yPos = y.getPixelForTick(index);
+                                    // 左寄せ（crossAlign: start）位置のX座標
+                                    const xPos = y.left;
+
+                                    // --- 1行目: 薬剤名（太字・濃いグレー） ---
+                                    ctx.font = 'bold 10px sans-serif';
+                                    ctx.fillStyle = '#1f2937'; // 濃いグレー (gray-800相当)
+                                    ctx.fillText(label[0], xPos, yPos - 3);
+
+                                    // --- 2行目: 資材名（細字・小さめ・薄いグレー） ---
+                                    ctx.font = 'normal 9px sans-serif';
+                                    ctx.fillStyle = '#9ca3af'; // 薄いグレー (gray-400相当)
+                                    ctx.fillText(label[1], xPos, yPos + 9);
+                                });
+                                ctx.restore();
+                            }
+                        }]
                     }
                 });
 
