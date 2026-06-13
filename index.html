@@ -803,17 +803,15 @@
                         </span>
                     `;
                 }
-                    const cardHtml = `
+                   const cardHtml = `
                     <div onclick="toggleDetails(${item.id})" class="p-3 rounded-xl shadow-sm border ${cardBorder} transition cursor-pointer select-none">
-                        <div class="flex justify-between items-start text-sm">
-                            
-                            <div class="flex-1 min-w-0 flex items-center space-x-2.5 pr-2">
+                        <div class="flex justify-between items-stretch text-sm min-h-[44px]">
+                            <div class="flex-1 pr-4 min-w-0 flex items-center space-x-2.5">
                                 ${thumbnailHtml}
                                 <div class="min-w-0 flex-1">
                                     <span class="text-xxs text-gray-400 block truncate font-medium mb-0.5">${item.drug_name}</span>
-                                    
-                                    <div class="flex items-start w-full">
-                                        <h3 class="font-bold text-gray-800 text-sm break-all leading-tight flex-1">
+                                    <div class="flex items-start max-w-full">
+                                        <h3 class="font-bold text-gray-800 text-sm break-words leading-tight">
                                             ${(item.shizai_name || '').replace(/[  ]/g, '<br>')}
                                         </h3>
                                         ${infoButtonHtml}
