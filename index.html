@@ -486,8 +486,8 @@
                 alert("登録エラー: " + error.message);
             } else {
                 // 🔔 【変更】URLの出ない綺麗なトースト通知に切り替え
-                if (typeof showToastNotification === "function") {
-                    showToastNotification("新しく資材を登録しました！");
+                if (typeof showToast === "function") {
+                    showToast("新しく資材を登録しました！");
                 }
                 textInputElement.value = "";
                 textInputElement.classList.add("hidden");
@@ -1089,6 +1089,25 @@
         function closeInfoPopup() {
             document.getElementById("info-popup").classList.add("hidden");
         }
+
+        // トースト通知を制御する本体関数
+        function showToast(message) {
+            const toast = document.getElementById("custom-toast");
+            const toastMsg = document.getElementById("toast-message");
+            if (!toast || !toastMsg) return;
+
+            toastMsg.innerText = message;
+            
+            // 画面にふわっと表示
+            toast.classList.remove("opacity-0", "pointer-events-none");
+            toast.classList.add("opacity-100");
+
+            // 2.5秒後に自動でふわっと消去
+            setTimeout(() => {
+                toast.classList.remove("opacity-100");
+                toast.classList.add("opacity-0", "pointer-events-none");
+            }, 2500);
+        }
     </script>
     
     <div id="info-popup" class="fixed inset-0 bg-black bg-opacity-60 z-50 flex items-center justify-center p-4 hidden" onclick="closeInfoPopup()">
@@ -1125,6 +1144,10 @@
                 </button>
             </div>
         </div>
+    </div>
+    <div id="custom-toast" class="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-gray-900 bg-opacity-90 text-white text-xs font-bold py-3 px-5 rounded-xl shadow-2xl transition-all duration-300 opacity-0 pointer-events-none z-50 flex items-center space-x-2 whitespace-nowrap">
+        <span>ℹ️</span>
+        <span id="toast-message">メッセージ</span>
     </div>
 </body>
 </html>
