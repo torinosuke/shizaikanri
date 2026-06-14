@@ -247,33 +247,32 @@
             renderStockList();
         }
 
-        // 💡 変更：「患者用資材管理」タイトルタップ時の処理（フォーム・アコーディオン完全初期化版）
+        // 💡 変更：「患者用資材管理」タイトルタップ時の完全初期化（新規フォーム・個別編集窓の両方に対応）
         function resetToAllDrugs() {
-            // 1. 新規登録・編集フォームを確実に閉じる
-            const form = document.getElementById("add-form-section");
-            if (form && !form.classList.contains("hidden")) {
-                // アラートの確認を確実に挟む
-                if (!confirm("入力・編集中の内容が破棄されます。中止してよろしいですか？")) {
-                    return; // キャンセルされたらここで終了（トップに戻らない）
+            const addForm = document.getElementById("add-form-section");
+            
+            // パターンA: 【新規登録フォーム】が開いている場合
+            if (addForm && !addForm.classList.contains("hidden")) {
+                if (!confirm("入力中の内容が破棄されます。新規登録を中止してよろしいですか？")) {
+                    return; // キャンセルされたらトップに戻らない
                 }
-                form.classList.add("hidden");
-                
-                // 💡 編集モード（ボタンの文字や状態、hidden等）をリセットする処理
-                if (typeof resetForm === "function") {
-                    resetForm();
+                addForm.classList.add("hidden");
+            }
+            
+            // パターンB: 【資材の編集窓】が開いている場合（editingId が null 以外）
+            if (typeof editingId !== 'undefined' && editingId !== null) {
+                if (!confirm("編集中の内容が破棄されます。編集を中止してよろしいですか？")) {
+                    return; // キャンセルされたらトップに戻らない
+                }
+                // 既存のキャンセル関数を安全に呼び出して編集状態をクリア
+                if (typeof cancelEdit === "function") {
+                    cancelEdit();
                 } else {
-                    // もしresetForm関数がない場合、手動でフォーム内のタイトルやボタンを「新規登録」に戻す
-                    const formTitle = document.getElementById("form-title");
-                    if (formTitle) formTitle.innerText = "新規資材登録";
-                    const submitBtn = document.getElementById("submit-btn");
-                    if (submitBtn) submitBtn.innerText = "登録する";
-                    // 編集用の隠しIDフィールドをクリア
-                    const editIdInput = document.getElementById("edit-id");
-                    if (editIdInput) editIdInput.value = "";
+                    editingId = null;
                 }
             }
 
-            // 2. 開いているアコーディオン詳細エリア（コントロールパネル）をすべて閉じる
+            // 開いているアコーディオン詳細エリア（コントロールパネル）をすべて閉じる（アラートなし）
             const panels = document.querySelectorAll('[id^="control-panel-"]');
             panels.forEach(panel => {
                 panel.classList.add("hidden");
@@ -288,19 +287,16 @@
             // プログラム内で保持している「開いているカードのID」をクリア
             openedCardId = null;
 
-            // --- 3. 以下は元のリセット処理をそのまま維持 ---
+            // --- 以下は元のリセット処理をそのまま維持 ---
             selectedDrugFilter = "ALL";
             const filterElement = document.getElementById("drug-filter");
             if (filterElement) filterElement.value = "ALL";
             
             clearSearchInput();
             
-            // 💡 最後に一覧を確実に全薬品（初期状態）で再描画する
+            // 💡 編集を確実にキャンセルした画面（通常の一覧画面）を再描画する
             if (typeof renderStockList === "function") {
                 renderStockList();
-            }
-            if (typeof renderPagination === "function") {
-                renderPagination();
             }
         }
         
