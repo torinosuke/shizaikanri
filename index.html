@@ -249,7 +249,7 @@
             renderStockList();
         }
 
-        // 💡 変更：「患者用資材管理」タイトルタップ時の完全初期化（変更時のみアラート）
+// 💡 変更：アラートに具体的な資材名を表示するように改良
         function resetToAllDrugs() {
             const addForm = document.getElementById("add-form-section");
             
@@ -259,7 +259,9 @@
                 const memoInput = document.getElementById("add-memo")?.value || "";
                 
                 if (nameInput.trim() !== "" || memoInput.trim() !== "") {
-                    if (!confirm("入力中の内容が破棄されます。新規登録を中止してよろしいですか？")) {
+                    // 資材名が入力されていればそれを表示、空なら「新規登録」と表示
+                    const displayName = nameInput.trim() ? `「${nameInput.trim()}」` : "新規資材";
+                    if (!confirm(`${displayName}の入力中の内容が破棄されます。新規登録を中止してよろしいですか？`)) {
                         return;
                     }
                 }
@@ -292,7 +294,9 @@
 
                 // 💡 変更があった場合のみ確認ダイアログ（アラート）を出す
                 if (isChanged) {
-                    if (!confirm("編集中の内容が変更されています。破棄して中止してよろしいですか？")) {
+                    // 記憶している初期状態から資材名を取得してアラートに組み込む
+                    const shizaiName = editInitialState.shizai_name || "この資材";
+                    if (!confirm(`「${shizaiName}」の編集中の内容が変更されています。破棄して中止してよろしいですか？`)) {
                         return; // キャンセルされたらトップに戻らない
                     }
                 }
