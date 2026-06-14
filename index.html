@@ -1006,9 +1006,20 @@
             currentPayoutInfo = null;
         }
         
+// 💡 変更：ドラムロール（select要素）から値を取得するように修正
         async function executeArrival(id, currentStock) {
-            const inputElement = document.getElementById(`arrival-count-${id}`);
-            // input[type="number"] から確実に10進数の数値として取得（予期せぬ挙動防止）
+            // HTML側で設定したセレクトボックスのID（inbound-count-${id}）に合わせて取得
+            const selectElement = document.getElementById(`inbound-count-${id}`);
+            
+            // もし見つからない場合は、念のため古いID（arrival-count-${id}）でも探す
+            const inputElement = selectElement || document.getElementById(`arrival-count-${id}`);
+            
+            if (!inputElement) {
+                alert("入力要素が見つかりません。");
+                return;
+            }
+
+            // セレクトボックスから確実に10進数の数値として取得
             const arrivalCount = parseInt(inputElement.value, 10) || 0;
             
             if (arrivalCount <= 0) { 
@@ -1027,6 +1038,10 @@
             if (error) {
                 alert("入荷処理エラー: " + error.message);
             } else {
+                // トースト通知を表示（関数が存在する場合）
+                if (typeof showToast === "function") {
+                    showToast(`${arrivalCount} 個 入荷しました`);
+                }
                 fetchStocks(); // 成功したら一覧を再読み込み
             }
         }
