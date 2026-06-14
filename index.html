@@ -396,7 +396,7 @@
 
                 urlHiddenInput.value = urlData.publicUrl;
                 statusLabel.innerText = "✅ 最適化・アップロード完了";
-                statusLabel.className = "text-xxs text-green-600 font-bold";
+                statusLabel.className = "text-xs text-green-600 font-bold";
 
                 const deleteBtn = document.getElementById(`btn-delete-image-${id}`);
                 if (deleteBtn) deleteBtn.classList.remove("hidden");
@@ -404,7 +404,7 @@
             } catch (err) {
                 console.error(err);
                 statusLabel.innerText = "❌ エラーが発生しました";
-                statusLabel.className = "text-xxs text-red-500 font-bold";
+                statusLabel.className = "text-xs text-red-500 font-bold";
                 alert("画像の処理に失敗しました: " + err.message);
             }
         }
@@ -420,7 +420,7 @@
 
             const currentUrl = urlHiddenInput.value;
             statusLabel.innerText = "⏳ 写真を消去中...";
-            statusLabel.className = "text-xxs text-orange-600 font-bold";
+            statusLabel.className = "text-xs text-orange-600 font-bold";
 
             try {
                 const storagePath = extractStoragePath(currentUrl);
@@ -497,7 +497,7 @@
                 document.getElementById("input-image-url").value = "";
                 document.getElementById("input-image-file").value = "";
                 document.getElementById("add-upload-status").innerText = "未選択";
-                document.getElementById("add-upload-status").className = "text-xxs text-gray-400 truncate max-w-[180px]";
+                document.getElementById("add-upload-status").className = "text-xs text-gray-400 truncate max-w-[180px]";
                 document.getElementById("input-order-url").value = "";
                 document.getElementById("input-phone-name").value = "";
                 document.getElementById("input-phone-number").value = "";
@@ -701,7 +701,7 @@
                                     <button type="button" id="btn-delete-image-${item.id}" onclick="deleteImageOnly(${item.id})" class="bg-red-50 hover:bg-red-100 text-red-600 font-bold py-1 px-2 rounded text-xs border border-red-200 transition ${hasPhoto ? '' : 'hidden'}">
                                         🗑️ 写真を削除
                                     </button>
-                                    <span id="edit-upload-status-${item.id}" class="text-xxs text-gray-400 truncate max-w-[150px]">
+                                    <span id="edit-upload-status-${item.id}" class="text-xs text-gray-400 truncate max-w-[150px]">
                                         ${hasPhoto ? '現在の画像あり' : '未登録'}
                                     </span>
                                 </div>
