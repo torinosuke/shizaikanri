@@ -180,6 +180,8 @@
         let currentPage = 1;
         const ITEMS_PER_PAGE = 10;
 
+        let editInitialState = null;
+        
         // ページ読み込み時に初期データを取得し、同時にリアルタイム監視を開始
         document.addEventListener("DOMContentLoaded", () => {
             fetchStocks(); // 初期読み込み
@@ -247,32 +249,60 @@
             renderStockList();
         }
 
-        // 💡 変更：「患者用資材管理」タイトルタップ時の完全初期化（新規フォーム・個別編集窓の両方に対応）
+        // 💡 変更：「患者用資材管理」タイトルタップ時の完全初期化（変更時のみアラート）
         function resetToAllDrugs() {
             const addForm = document.getElementById("add-form-section");
             
             // パターンA: 【新規登録フォーム】が開いている場合
             if (addForm && !addForm.classList.contains("hidden")) {
-                if (!confirm("入力中の内容が破棄されます。新規登録を中止してよろしいですか？")) {
-                    return; // キャンセルされたらトップに戻らない
+                const nameInput = document.getElementById("add-shizai-name")?.value || "";
+                const memoInput = document.getElementById("add-memo")?.value || "";
+                
+                if (nameInput.trim() !== "" || memoInput.trim() !== "") {
+                    if (!confirm("入力中の内容が破棄されます。新規登録を中止してよろしいですか？")) {
+                        return;
+                    }
                 }
                 addForm.classList.add("hidden");
             }
             
-            // パターンB: 【資材の編集窓】が開いている場合（editingId が null 以外）
-            if (typeof editingId !== 'undefined' && editingId !== null) {
-                if (!confirm("編集中の内容が破棄されます。編集を中止してよろしいですか？")) {
-                    return; // キャンセルされたらトップに戻らない
+            // パターンB: 【資材の編集窓】が開いている場合（実際のID群と比較）
+            if (typeof editingId !== 'undefined' && editingId !== null && editInitialState) {
+                const currentDrug = document.getElementById(`edit-drug-${editingId}`)?.value.trim() || "";
+                const currentShizai = document.getElementById(`edit-shizai-${editingId}`)?.value.trim() || "";
+                const currentCurrent = parseInt(document.getElementById(`edit-current-${editingId}`)?.value, 10) || 0;
+                const currentMin = parseInt(document.getElementById(`edit-min-${editingId}`)?.value, 10) || 0;
+                const currentContents = document.getElementById(`edit-contents-${editingId}`)?.value.trim() || "";
+                const currentImageUrl = document.getElementById(`edit-image-url-${editingId}`)?.value.trim() || "";
+                const currentOrderUrl = document.getElementById(`edit-order-url-${editingId}`)?.value.trim() || "";
+                const currentPhoneName = document.getElementById(`edit-phone-name-${editingId}`)?.value.trim() || "";
+                const currentPhoneNumber = document.getElementById(`edit-phone-number-${editingId}`)?.value.trim() || "";
+
+                // 初期データと現在の入力値を比較
+                const isChanged = 
+                    currentDrug !== editInitialState.drug_name ||
+                    currentShizai !== editInitialState.shizai_name ||
+                    currentCurrent !== editInitialState.current_stock ||
+                    currentMin !== editInitialState.min_stock ||
+                    currentContents !== editInitialState.contents ||
+                    currentImageUrl !== editInitialState.image_url ||
+                    currentOrderUrl !== editInitialState.order_url ||
+                    currentPhoneName !== editInitialState.phone_name ||
+                    currentPhoneNumber !== editInitialState.phone_number;
+
+                // 💡 変更があった場合のみ確認ダイアログ（アラート）を出す
+                if (isChanged) {
+                    if (!confirm("編集中の内容が変更されています。破棄して中止してよろしいですか？")) {
+                        return; // キャンセルされたらトップに戻らない
+                    }
                 }
-                // 既存のキャンセル関数を安全に呼び出して編集状態をクリア
-                if (typeof cancelEdit === "function") {
-                    cancelEdit();
-                } else {
-                    editingId = null;
-                }
+
+                // 編集状態をクリア
+                editingId = null;
+                editInitialState = null;
             }
 
-            // 開いているアコーディオン詳細エリア（コントロールパネル）をすべて閉じる（アラートなし）
+            // 開いているアコーディオン詳細エリア（コントロールパネル）をすべて閉じる
             const panels = document.querySelectorAll('[id^="control-panel-"]');
             panels.forEach(panel => {
                 panel.classList.add("hidden");
@@ -284,7 +314,6 @@
                 arrow.innerText = "▼";
             });
 
-            // プログラム内で保持している「開いているカードのID」をクリア
             openedCardId = null;
 
             // --- 以下は元のリセット処理をそのまま維持 ---
@@ -294,7 +323,6 @@
             
             clearSearchInput();
             
-            // 💡 編集を確実にキャンセルした画面（通常の一覧画面）を再描画する
             if (typeof renderStockList === "function") {
                 renderStockList();
             }
@@ -1046,7 +1074,7 @@
             currentPayoutInfo = null;
         }
         
-// 💡 変更：ドラムロール（select要素）から値を取得するように修正
+        // 💡 変更：ドラムロール（select要素）から値を取得するように修正
         async function executeArrival(id, currentStock) {
             // HTML側で設定したセレクトボックスのID（inbound-count-${id}）に合わせて取得
             const selectElement = document.getElementById(`inbound-count-${id}`);
@@ -1103,8 +1131,35 @@
             }
         }
 
-        function enterEditMode(id) { editingId = id; renderStockList(); }
-        function cancelEdit() { editingId = null; renderStockList(); }
+        // 💡 変更：編集開始時のデータを完全に記憶する
+        function enterEditMode(id) {
+            editingId = id;
+            
+            // currentStocksDataから、編集を開始した資材のデータを特定して記憶する
+            const originalItem = currentStocksData ? currentStocksData.find(item => item.id === id) : null;
+            if (originalItem) {
+                editInitialState = {
+                    drug_name: originalItem.drug_name || "",
+                    shizai_name: originalItem.shizai_name || "",
+                    current_stock: originalItem.current_stock || 0,
+                    min_stock: originalItem.min_stock || 0,
+                    contents: originalItem.contents || "",
+                    image_url: originalItem.image_url || "",
+                    order_url: originalItem.order_url || "",
+                    phone_name: originalItem.phone_name || "",
+                    phone_number: originalItem.phone_number || ""
+                };
+            }
+            
+            renderStockList();
+        }
+
+        // 💡 変更：キャンセル時に記憶も消す
+        function cancelEdit() {
+            editingId = null;
+            editInitialState = null; // 記憶をリセット
+            renderStockList();
+        }
 
         async function saveEdit(id) {
             const nextDrug = document.getElementById(`edit-drug-${id}`).value.trim();
@@ -1138,6 +1193,7 @@
                 alert("修正保存エラー: " + error.message);
             } else {
                 editingId = null;
+                editInitialState = null; // 💡 ここを追加（保存成功時に記憶をクリア）
                 fetchStocks(); 
             }
         }
