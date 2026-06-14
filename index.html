@@ -1009,18 +1009,15 @@
 // 💡 変更：ドラムロール（select要素）から値を取得するように修正
         async function executeArrival(id, currentStock) {
             // HTML側で設定したセレクトボックスのID（inbound-count-${id}）に合わせて取得
-            const inputElement = document.getElementById(`inbound-count-${id}`);
+            const selectElement = document.getElementById(`inbound-count-${id}`);
             
-            // もし見つからない場合は、念のため古いID（arrival-count-${id}）でも探す
-            // const inputElement = selectElement || document.getElementById(`arrival-count-${id}`);
-            
-            if (!inputElement) {
+            if (!selectElement) {
                 alert("入力要素が見つかりません。");
                 return;
             }
 
             // セレクトボックスから確実に10進数の数値として取得
-            const arrivalCount = parseInt(inputElement.value, 10) || 0;
+            const arrivalCount = parseInt(selectElement.value, 10) || 0;
             
             if (arrivalCount <= 0) { 
                 alert("1以上の数字を入力してください。"); 
