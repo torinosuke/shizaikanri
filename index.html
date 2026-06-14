@@ -249,18 +249,26 @@
             renderStockList();
         }
 
-// 💡 変更：アラートに具体的な資材名を表示するように改良
+// 💡 変更：アラートに「薬剤名：資材名」をセットで表示するように改良
         function resetToAllDrugs() {
             const addForm = document.getElementById("add-form-section");
             
             // パターンA: 【新規登録フォーム】が開いている場合
             if (addForm && !addForm.classList.contains("hidden")) {
+                const drugInput = document.getElementById("add-drug-name")?.value || "";
                 const nameInput = document.getElementById("add-shizai-name")?.value || "";
                 const memoInput = document.getElementById("add-memo")?.value || "";
                 
-                if (nameInput.trim() !== "" || memoInput.trim() !== "") {
-                    // 資材名が入力されていればそれを表示、空なら「新規登録」と表示
-                    const displayName = nameInput.trim() ? `「${nameInput.trim()}」` : "新規資材";
+                // 何かしら入力されている場合のみアラートを出す
+                if (drugInput.trim() !== "" || nameInput.trim() !== "" || memoInput.trim() !== "") {
+                    let displayName = "新規資材";
+                    // 薬品名か資材名が入力されていれば、セットの形式を作成
+                    if (drugInput.trim() || nameInput.trim()) {
+                        const d = drugInput.trim() || "（未入力）";
+                        const s = nameInput.trim() || "（未入力）";
+                        displayName = `「${d} ： ${s}」`;
+                    }
+                    
                     if (!confirm(`${displayName}の入力中の内容が破棄されます。新規登録を中止してよろしいですか？`)) {
                         return;
                     }
@@ -294,9 +302,11 @@
 
                 // 💡 変更があった場合のみ確認ダイアログ（アラート）を出す
                 if (isChanged) {
-                    // 記憶している初期状態から資材名を取得してアラートに組み込む
+                    // 記憶している初期状態から「薬剤名」と「資材名」をセットにして取得
+                    const drugName = editInitialState.drug_name || "不明な薬剤";
                     const shizaiName = editInitialState.shizai_name || "この資材";
-                    if (!confirm(`「${shizaiName}」の編集中の内容が変更されています。破棄して中止してよろしいですか？`)) {
+                    
+                    if (!confirm(`「${drugName} ： ${shizaiName}」の編集中の内容が変更されています。破棄して中止してよろしいですか？`)) {
                         return; // キャンセルされたらトップに戻らない
                     }
                 }
