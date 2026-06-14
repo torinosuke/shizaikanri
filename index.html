@@ -696,7 +696,7 @@
                                 <div class="flex items-center space-x-2 flex-wrap gap-y-1.5">
                                     <input type="file" id="edit-image-file-${item.id}" accept="image/*" onchange="uploadImageHandler('edit', ${item.id})" class="hidden">
                                     <button type="button" onclick="document.getElementById('edit-image-file-${item.id}').click()" class="bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-1 px-2 rounded text-xs border transition">
-                                        📷 写真を変更
+                                        ${hasPhoto ? '📷 写真を変更' : '📷 写真を登録'}
                                     </button>
                                     <button type="button" id="btn-delete-image-${item.id}" onclick="deleteImageOnly(${item.id})" class="bg-red-50 hover:bg-red-100 text-red-600 font-bold py-1 px-2 rounded text-xs border border-red-200 transition ${hasPhoto ? '' : 'hidden'}">
                                         🗑️ 写真を削除
