@@ -247,20 +247,33 @@
             renderStockList();
         }
 
-        // 💡 変更：「患者用資材管理」タイトルタップ時の処理（アコーディオン完全初期化版）
+        // 💡 変更：「患者用資材管理」タイトルタップ時の処理（フォーム・アコーディオン完全初期化版）
         function resetToAllDrugs() {
+            // 1. 新規登録・編集フォームを確実に閉じる
             const form = document.getElementById("add-form-section");
-            
-            // 1. 新規登録・編集フォームが開いている場合の確認
             if (form && !form.classList.contains("hidden")) {
+                // アラートの確認を確実に挟む
                 if (!confirm("入力・編集中の内容が破棄されます。中止してよろしいですか？")) {
-                    return; // キャンセルされたらここで処理を抜ける（トップに戻らない）
+                    return; // キャンセルされたらここで終了（トップに戻らない）
                 }
                 form.classList.add("hidden");
+                
+                // 💡 編集モード（ボタンの文字や状態、hidden等）をリセットする処理
+                if (typeof resetForm === "function") {
+                    resetForm();
+                } else {
+                    // もしresetForm関数がない場合、手動でフォーム内のタイトルやボタンを「新規登録」に戻す
+                    const formTitle = document.getElementById("form-title");
+                    if (formTitle) formTitle.innerText = "新規資材登録";
+                    const submitBtn = document.getElementById("submit-btn");
+                    if (submitBtn) submitBtn.innerText = "登録する";
+                    // 編集用の隠しIDフィールドをクリア
+                    const editIdInput = document.getElementById("edit-id");
+                    if (editIdInput) editIdInput.value = "";
+                }
             }
 
-            // 2. 開いているアコーディオン詳細エリアをすべて閉じる（アラートなし）
-            // IDが「control-panel-」で始まるすべての詳細エリア要素を取得して非表示にする
+            // 2. 開いているアコーディオン詳細エリア（コントロールパネル）をすべて閉じる
             const panels = document.querySelectorAll('[id^="control-panel-"]');
             panels.forEach(panel => {
                 panel.classList.add("hidden");
@@ -272,15 +285,23 @@
                 arrow.innerText = "▼";
             });
 
-            // プログラム内で保持している「開いているカードのID」の記録をクリア
+            // プログラム内で保持している「開いているカードのID」をクリア
             openedCardId = null;
 
-            // --- 以下は元のリセット処理をそのまま維持 ---
+            // --- 3. 以下は元のリセット処理をそのまま維持 ---
             selectedDrugFilter = "ALL";
             const filterElement = document.getElementById("drug-filter");
             if (filterElement) filterElement.value = "ALL";
             
             clearSearchInput();
+            
+            // 💡 最後に一覧を確実に全薬品（初期状態）で再描画する
+            if (typeof renderStockList === "function") {
+                renderStockList();
+            }
+            if (typeof renderPagination === "function") {
+                renderPagination();
+            }
         }
         
         function normalizeString(str) {
