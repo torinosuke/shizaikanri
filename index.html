@@ -247,7 +247,7 @@
             renderStockList();
         }
 
-        // 💡 変更：「患者用資材管理」タイトルタップ時の処理（アコーディオンを一括で閉じる処理を追加）
+        // 💡 変更：「患者用資材管理」タイトルタップ時の処理（アコーディオン完全初期化版）
         function resetToAllDrugs() {
             const form = document.getElementById("add-form-section");
             
@@ -257,17 +257,23 @@
                     return; // キャンセルされたらここで処理を抜ける（トップに戻らない）
                 }
                 form.classList.add("hidden");
-                if (typeof resetForm === "function") {
-                    resetForm();
-                }
             }
 
-            // 2. 💡 追加：開いているすべてのアコーディオン（詳細窓）をアラートなしで閉じる
-            // idが「detail-」で始まる要素をすべて取得し、非表示（hidden）にする
-            const details = document.querySelectorAll('[id^="detail-"]');
-            details.forEach(detail => {
-                detail.classList.add("hidden");
+            // 2. 開いているアコーディオン詳細エリアをすべて閉じる（アラートなし）
+            // IDが「control-panel-」で始まるすべての詳細エリア要素を取得して非表示にする
+            const panels = document.querySelectorAll('[id^="control-panel-"]');
+            panels.forEach(panel => {
+                panel.classList.add("hidden");
             });
+
+            // すべてのカードの矢印（▼）を元の向きに戻す
+            const arrows = document.querySelectorAll('[id^="arrow-"]');
+            arrows.forEach(arrow => {
+                arrow.innerText = "▼";
+            });
+
+            // プログラム内で保持している「開いているカードのID」の記録をクリア
+            openedCardId = null;
 
             // --- 以下は元のリセット処理をそのまま維持 ---
             selectedDrugFilter = "ALL";
