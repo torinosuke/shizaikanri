@@ -915,67 +915,80 @@
             else fetchStocks();
         }
 
-        // 誤タップ防止＆複数対応の払い出し処理（カスタムモーダル版）
-        async function executePayout(id, currentStock) {
-            const inputElement = document.getElementById(`payout-count-${id}`);
-            const payoutCount = parseInt(inputElement.value, 10) || 0;
+        // 💡 変更：ボタンを押した時に直接モーダルを開き、個数を選択させる
+        function executePayout(id, currentStock) {
+            const modal = document.getElementById('payout-confirm-modal');
+            const messageEl = document.getElementById('payout-modal-message');
+            const confirmBtn = document.getElementById('payout-modal-confirm-btn');
+            const selectEl = document.getElementById('payout-count-select');
             
-            if (payoutCount <= 0) {
-                alert("1以上の数字を入力してください。");
-                return;
-            }
-            if (payoutCount > currentStock) {
-                alert(`在庫数（${currentStock}個）を超える払い出しはできません。`);
-                return;
-            }
+            if (!modal || !selectEl) return;
             
-            // 情報を一時的に記憶
-            currentPayoutInfo = { id, currentStock, payoutCount };
+            // モーダルを開いたときは、必ずデフォルトの「1」を選択状態にする
+            selectEl.value = "1";
             
-            // モーダルの文言を書き換えて表示
-            document.getElementById('payout-modal-message').innerText = `この資材を ${payoutCount} 個 払い出してよろしいですか？`;
+            // currentStocksData（または元のデータ配列）から対象の資材名を取得
+            const item = currentStocksData ? currentStocksData.find(i => i.id === id) : null;
+            const nameStr = item ? item.shizai_name : "この資材";
             
-            // OKボタンに処理を結びつける
-            document.getElementById('payout-modal-confirm-btn').onclick = confirmPayoutModal;
+            // モーダルの案内文を設定
+            messageEl.innerHTML = `<span class="font-bold text-gray-700">${nameStr}</span>を<br>払い出します。個数を選択してください。`;
+            
+            // 一時保持用変数にデータをセット（現在の在庫数を引き継ぐため）
+            currentPayoutInfo = { id, currentStock };
+            
+            // OKボタンに実際のDB更新処理を結びつける
+            confirmBtn.onclick = confirmPayoutModal;
             
             // モーダルを表示
-            document.getElementById('payout-confirm-modal').classList.remove('hidden');
+            modal.classList.remove('hidden');
         }
         
         // 払い出し一時保持用の変数
         let currentPayoutInfo = null;
 
-        // モーダルを閉じる処理
-        function cancelPayoutModal() {
-            document.getElementById('payout-confirm-modal').classList.add('hidden');
-            currentPayoutInfo = null;
-        }
-
-        // モーダルでOKが押された時の実際の処理
+        // 💡 変更：モーダルで「OK」が押されたときに、選択された数を元にSupabaseを更新する
         async function confirmPayoutModal() {
             if (!currentPayoutInfo) return;
-            const { id, currentStock, payoutCount } = currentPayoutInfo;
             
-            // モーダルを即座に閉じる
-            document.getElementById('payout-confirm-modal').classList.add('hidden');
+            const { id, currentStock } = currentPayoutInfo;
+            const selectEl = document.getElementById('payout-count-select');
+            const payoutCount = parseInt(selectEl.value, 10) || 1;
+            
+            // 在庫数チェック
+            if (payoutCount > currentStock) {
+                alert(`在庫数（${currentStock}個）を超える払い出しはできません。`);
+                cancelPayoutModal();
+                return;
+            }
             
             const newStock = currentStock - payoutCount;
             
-            // Supabaseを更新
-            const { error } = await db.from('shizai_stocks')
-                .update({ current_stock: newStock })
-                .eq('id', id);
+            try {
+                const { error } = await db
+                    .from('shizai_stocks')
+                    .update({ current_stock: newStock })
+                    .eq('id', id);
+                    
+                if (error) throw error;
                 
-            if (error) {
-                alert("払い出し処理エラー: " + error.message);
-            } else {
+                // トースト通知を表示（関数が存在する場合）
                 if (typeof showToast === "function") {
-                    showToast(`払い出しが完了しました（-${payoutCount}個）`);
+                    showToast(`${payoutCount} 個 払い出しました`);
                 }
-                fetchStocks(); // 一覧を再読み込み
+            } catch (err) {
+                console.error(err);
+                alert("払い出し処理に失敗しました: " + err.message);
+            } finally {
+                cancelPayoutModal();
             }
-            
-            currentPayoutInfo = null; // 変数をクリア
+        }
+
+        // モーダルを閉じる処理
+        function cancelPayoutModal() {
+            const modal = document.getElementById('payout-confirm-modal');
+            if (modal) modal.classList.add('hidden');
+            currentPayoutInfo = null;
         }
         
         async function executeArrival(id, currentStock) {
@@ -1132,8 +1145,37 @@
             <div class="text-center">
                 <h4 class="font-bold text-gray-800 text-sm leading-tight">払い出しの確認</h4>
                 <p id="payout-modal-message" class="text-xs text-gray-500 mt-2 font-medium leading-relaxed">
-                    この資材を 1 個<br>払い出してよろしいですか？
+                    この資材を払い出します。
                 </p>
+                
+                <div class="mt-3 flex items-center justify-center space-x-2 bg-gray-50 p-2 rounded-xl border border-gray-100">
+                    <label for="payout-count-select" class="text-xs font-bold text-gray-600">数量:</label>
+                    <div class="relative">
+                        <select id="payout-count-select" class="appearance-none bg-white border border-gray-300 rounded-lg px-4 py-1.5 text-sm font-bold text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-400 pr-8">
+                            <option value="1" selected>1 個</option>
+                            <option value="2">2 個</option>
+                            <option value="3">3 個</option>
+                            <option value="4">4 個</option>
+                            <option value="5">5 個</option>
+                            <option value="6">6 個</option>
+                            <option value="7">7 個</option>
+                            <option value="8">8 個</option>
+                            <option value="9">9 個</option>
+                            <option value="10">10 個</option>
+                            <option value="11">11 個</option>
+                            <option value="12">12 個</option>
+                            <option value="13">13 個</option>
+                            <option value="14">14 個</option>
+                            <option value="15">15 個</option>
+                            <option value="16">16 個</option>
+                            <option value="17">17 個</option>
+                            <option value="18">18 個</option>
+                            <option value="19">19 個</option>
+                            <option value="20">20 個</option>
+                        </select>
+                        <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500 text-xs">▼</div>
+                    </div>
+                </div>
             </div>
             <div class="grid grid-cols-2 gap-2.5 pt-2 border-t border-gray-100">
                 <button onclick="cancelPayoutModal()" class="w-full bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold py-2 rounded-xl text-xs transition">
