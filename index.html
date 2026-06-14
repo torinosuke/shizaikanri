@@ -1009,10 +1009,10 @@
 // 💡 変更：ドラムロール（select要素）から値を取得するように修正
         async function executeArrival(id, currentStock) {
             // HTML側で設定したセレクトボックスのID（inbound-count-${id}）に合わせて取得
-            const selectElement = document.getElementById(`inbound-count-${id}`);
+            const inputElement = document.getElementById(`inbound-count-${id}`);
             
             // もし見つからない場合は、念のため古いID（arrival-count-${id}）でも探す
-            const inputElement = selectElement || document.getElementById(`arrival-count-${id}`);
+            // const inputElement = selectElement || document.getElementById(`arrival-count-${id}`);
             
             if (!inputElement) {
                 alert("入力要素が見つかりません。");
