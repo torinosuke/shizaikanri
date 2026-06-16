@@ -121,9 +121,18 @@
                 <div>
                     <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">対象薬品フィルター</label>
                     <div class="relative">
-                        <select id="drug-filter" onchange="filterSelectorChanged()" class="w-full p-2.5 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 outline-none text-xs font-bold text-gray-700 appearance-none">
-                            <option value="ALL">全ての薬品</option>
-                        </select>
+                        <div class="relative w-full" id="custom-select-container">
+                            <button type="button" onclick="toggleCustomSelect()" id="custom-select-trigger" class="w-full bg-white border border-gray-300 rounded-xl px-3 py-2 text-xs text-left flex justify-between items-center shadow-sm focus:outline-none">
+                                <span id="custom-select-label">すべての薬品</span>
+                                <span class="text-gray-500 text-xxs">▼</span>
+                            </button>
+                        
+                            <div id="custom-select-options" class="hidden absolute left-0 right-0 mt-1 max-h-60 overflow-y-auto bg-white border border-gray-200 rounded-xl shadow-xl z-50 py-1">
+                                <div onclick="selectDrugOption('all', 'すべての薬品')" class="px-3 py-2 text-xs hover:bg-gray-100 cursor-pointer text-gray-700">
+                                    すべての薬品
+                                </div>
+                                </div>
+                        </div>
                         <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-gray-500 text-xs">▼</div>
                     </div>
                 </div>
@@ -619,21 +628,71 @@
             }
         }
 
+        // ドロップダウンの選択肢を動的に更新する（修正版）
         function updateDrugFilterOptions() {
-            const filterElement = document.getElementById("drug-filter");
+            const optionsContainer = document.getElementById("custom-drug-filter-options");
+            const labelElement = document.getElementById("custom-drug-filter-label");
+            
+            // 重複のない薬品名リストを作成してソート
             const drugNames = [...new Set(currentStocksData.map(item => item.drug_name))]
                 .sort((a, b) => a.localeCompare(b, 'ja'));
-
-            filterElement.innerHTML = `<option value="ALL">全ての薬品</option>`;
-            drugNames.forEach(name => {
-                const selectedAttr = (name === selectedDrugFilter) ? "selected" : "";
-                filterElement.innerHTML += `<option value="${name}" ${selectedAttr}>${name}</option>`;
-            });
+        
+            // 選択されていた薬品が、現在のデータ（リスト）の中に存在するかチェック
             if (selectedDrugFilter !== "ALL" && !drugNames.includes(selectedDrugFilter)) {
                 selectedDrugFilter = "ALL";
-                filterElement.value = "ALL";
             }
+        
+            // 現在の選択状態に合わせて、ボタンの表示テキストを更新
+            labelElement.innerText = (selectedDrugFilter === "ALL") ? "全ての薬品" : selectedDrugFilter;
+        
+            // リストの初期化（「全ての薬品」を配置）
+            let htmlContent = `
+                <div onclick="selectDrugFilterOption('ALL')" class="px-3 py-2.5 text-xs hover:bg-gray-100 cursor-pointer text-gray-700 ${selectedDrugFilter === 'ALL' ? 'bg-blue-50 font-bold text-blue-600' : ''}">
+                    全ての薬品
+                </div>
+            `;
+        
+            // 薬品ごとに div 要素（選択肢）を生成
+            drugNames.forEach(name => {
+                const isSelected = (name === selectedDrugFilter);
+                htmlContent += `
+                    <div onclick="selectDrugFilterOption('${name}')" class="px-3 py-2.5 text-xs hover:bg-gray-100 cursor-pointer text-gray-700 border-t border-gray-50 ${isSelected ? 'bg-blue-50 font-bold text-blue-600' : ''}">
+                        ${name}
+                    </div>
+                `;
+            });
+        
+            optionsContainer.innerHTML = htmlContent;
         }
+        
+        // 追加：ドロップダウンの開閉を切り替える関数
+        function toggleCustomDrugFilter() {
+            const optionsMenu = document.getElementById('custom-drug-filter-options');
+            optionsMenu.classList.toggle('hidden');
+        }
+        
+        // 追加：選択肢がタップされた時の処理
+        function selectDrugFilterOption(value) {
+            // 1. グローバル変数を更新
+            selectedDrugFilter = value;
+            
+            // 2. メニューを閉じる
+            document.getElementById('custom-drug-filter-options').classList.add('hidden');
+            
+            // 3. 画面表示の更新（元のコードでselectのchange時に呼んでいた処理を呼び出す）
+            // 元のコードの仕様に合わせて、UIの再描画関数（renderStockList など）を呼び出してください
+            updateDrugFilterOptions(); // ボタン名やリストの選択状態（背景色）を再反映
+            renderStockList();            // ←元々のコードで一覧の絞り込み表示を行っているメインの描画関数名に変えてください
+        }
+        
+        // 追加：ドロップダウンの外側をタップしたら自動で閉じる親切設計
+        document.addEventListener('click', function(event) {
+            const container = document.getElementById('custom-drug-filter-container');
+            const optionsMenu = document.getElementById('custom-drug-filter-options');
+            if (container && optionsMenu && !container.contains(event.target)) {
+                optionsMenu.classList.add('hidden');
+            }
+        });
 
         function updateAddFormDrugOptions() {
             const selectElement = document.getElementById("input-drug-select");
