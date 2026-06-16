@@ -15,7 +15,7 @@
       "purpose": "any maskable"
     }
   ],
-  "start_url": "shizaikanri/index.html",
+  "start_url": "/shizaikanri/index.html",
   "scope": "./",
   "background_color": "#2563EB",
   "theme_color": "#2563EB",
