@@ -9,6 +9,10 @@
     <style>
         .cursor-pointer, .header-title-btn, .page-btn { -webkit-tap-highlight-color: transparent; }
     </style>
+    // PWA化用
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#2563EB">
+    <link rel="apple-touch-icon" href="icon-192.png">
 </head>
 <body class="bg-gray-100 min-h-screen text-gray-800 font-sans pb-12">
 
@@ -1257,6 +1261,14 @@
                 toast.classList.remove("opacity-100");
                 toast.classList.add("opacity-0", "pointer-events-none");
             }, 2500);
+        }
+
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(reg => console.log('Service Worker 登録成功完了', reg))
+                    .catch(err => console.error('Service Worker 登録失敗', err));
+            });
         }
     </script>
     
