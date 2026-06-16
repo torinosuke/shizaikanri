@@ -1,4 +1,4 @@
-const CACHE_NAME = 'shizai-management-v1';
+const CACHE_NAME = 'shizai-management-v2';
 // キャッシュする資材（HTMLや外部CSS/JS）
 const ASSETS = [
   './index.html',
