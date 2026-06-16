@@ -598,27 +598,55 @@
             const errorArea = document.getElementById("error-message");
             const errorText = document.getElementById("error-text");
             errorArea.classList.add("hidden");
-
-            try {
-                const { data: stocks, error } = await db
-                    .from('shizai_stocks')
-                    .select('*')
-                    .order('id', { ascending: true });
-
-                if (error) {
-                    errorText.innerText = error.message;
-                    errorArea.classList.remove("hidden");
-                    return;
+        
+            // スマホがオンラインかどうかを判定
+            if (navigator.onLine) {
+                try {
+                    const { data: stocks, error } = await db
+                        .from('shizai_stocks')
+                        .select('*')
+                        .order('id', { ascending: true });
+        
+                    if (error) throw error;
+        
+                    // 💡 【重要】取得に成功したら、ブラウザのキャッシュ(LocalStorage)に保存する
+                    localStorage.setItem('cached_shizai_stocks', JSON.stringify(stocks || []));
+        
+                    currentStocksData = stocks || [];
+                    updateDrugFilterOptions();
+                    updateAddFormDrugOptions();
+                    renderStockList();
+        
+                } catch (e) {
+                    console.warn("Supabaseからのデータ取得に失敗したため、キャッシュを読み込みます:", e.message);
+                    loadCachedData(e.message);
                 }
-
-                currentStocksData = stocks || [];
+            } else {
+                // 💡 オフラインの場合は即座にキャッシュを読み込む
+                loadCachedData("ネットワークがオフラインです。");
+            }
+        }
+        
+        // 💡 オフライン時用のデータ読み込み補助関数
+        function loadCachedData(reasonMessage) {
+            const errorArea = document.getElementById("error-message");
+            const errorText = document.getElementById("error-text");
+            
+            // 画面に「オフライン動作中」である警告を表示
+            errorText.innerText = reasonMessage + "（保存されている過去のデータを表示しています）";
+            errorArea.classList.remove("hidden");
+        
+            // LocalStorageから過去のデータを引き出す
+            const localData = localStorage.getItem('cached_shizai_stocks');
+            if (localData) {
+                currentStocksData = JSON.parse(localData);
                 updateDrugFilterOptions();
                 updateAddFormDrugOptions();
                 renderStockList();
-
-            } catch (e) {
-                errorText.innerText = "通信エラー: " + e.message;
-                errorArea.classList.remove("hidden");
+            } else {
+                // キャッシュすら全くない初回起動時の場合
+                document.getElementById("stock-list").innerHTML = 
+                    `<p class="text-center text-gray-500 py-8">オフラインのためデータを読み込めません。一度オンラインで起動してください。</p>`;
             }
         }
 
