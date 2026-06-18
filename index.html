@@ -189,14 +189,14 @@
         
                 <div class="grid grid-cols-2 gap-3 border-t border-gray-100 pt-3">
                     <div>
-                        <h3 class="text-[11px] font-bold text-red-600 mb-1">🔥 払い出し上位</h3>
-                        <ol id="payout-ranking" class="text-[11px] text-gray-600 list-decimal pl-4 space-y-0.5">
+                        <h3 class="text-[10px] font-bold text-red-600 mb-1">🔥 払い出し上位</h3>
+                        <ol id="payout-ranking" class="text-[10px] text-gray-600 list-decimal pl-3 space-y-1">
                             <li class="text-gray-400">データなし</li>
                         </ol>
                     </div>
                     <div>
-                        <h3 class="text-[11px] font-bold text-green-600 mb-1">📦 入庫上位</h3>
-                        <ol id="arrival-ranking" class="text-[11px] text-gray-600 list-decimal pl-4 space-y-0.5">
+                        <h3 class="text-[10px] font-bold text-green-600 mb-1">📦 入庫上位</h3>
+                        <ol id="arrival-ranking" class="text-[10px] text-gray-600 list-decimal pl-3 space-y-1">
                             <li class="text-gray-400">データなし</li>
                         </ol>
                     </div>
@@ -1496,21 +1496,22 @@
         
             // 4. ランキング表示の反映
             const renderRanking = (elementId, data) => {
-                const el = document.getElementById(elementId);
-                if (data.length === 0) {
-                    el.innerHTML = `<li class="text-gray-400 list-none">データなし</li>`;
-                } else {
-                    el.innerHTML = data.map(([name, qty]) => `
-                        <li class="truncate" title="${name}">
-                            <span class="font-medium text-gray-700">${name.split(' - ')[1]}</span> 
-                            <span class="font-bold text-gray-900">(${qty}個)</span>
-                        </li>
-                    `).join('');
-                }
-            };
-        
-            renderRanking('payout-ranking', sortedPayouts);
-            renderRanking('arrival-ranking', sortedArrivals);
+            const el = document.getElementById(elementId);
+            if (data.length === 0) {
+                el.innerHTML = `<li class="text-gray-400 list-none">データなし</li>`;
+            } else {
+                // 💡 text-[10px] に小さくし、truncate を削除。leading-tight で行間を詰めて折り返し対応に
+                el.innerHTML = data.map(([name, qty]) => `
+                    <li class="text-[10px] text-gray-700 leading-tight mb-1">
+                        <span class="font-medium">${name.split(' - ')[1]}</span> 
+                        <span class="font-bold text-gray-900 whitespace-nowrap">(${qty}個)</span>
+                    </li>
+                `).join('');
+            }
+        };
+    
+        renderRanking('payout-ranking', sortedPayouts);
+        renderRanking('arrival-ranking', sortedArrivals);
         }
     </script>
     
