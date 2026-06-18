@@ -107,50 +107,70 @@
             </div>
         </div>
 
-        <div id="alert-section" class="mb-4 hidden">
-            <h2 class="text-red-600 font-bold text-sm mb-2">⚠️ 発注が必要な資材（院内全体）</h2>
-            <div id="alert-list" class="space-y-2"></div>
-        </div>
-
-        <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 mb-4 space-y-3">
-            <div>
-                <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">キーワード検索（資材名・薬品名）</label>
-                <div class="relative">
-                    <input type="text" id="search-input" oninput="handleSearchInput()" placeholder="検索したいキーワードを入力..." class="w-full p-3 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 outline-none text-sm font-medium text-gray-700">
-                    <button id="search-clear-btn" onclick="clearSearchInput()" class="absolute inset-y-0 right-0 px-3 flex items-center text-gray-400 hover:text-gray-600 hidden">✕</button>
-                </div>
+        <div id="stocks-list-section" class="space-y-3">
+            
+            <div id="alert-section" class="mb-4 hidden">
+                <h2 class="text-red-600 font-bold text-sm mb-2">⚠️ 発注が必要な資材（院内全体）</h2>
+                <div id="alert-list" class="space-y-2"></div>
             </div>
 
-            <div class="grid grid-cols-2 gap-2">
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 mb-4 space-y-3">
                 <div>
-                    <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">対象薬品フィルター</label>
+                    <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">キーワード検索（資材名・薬品名）</label>
                     <div class="relative">
-                        <select id="drug-filter" onchange="filterSelectorChanged()" class="w-full p-2.5 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 outline-none text-xs font-bold text-gray-700 appearance-none">
-                            <option value="ALL">全ての薬品</option>
-                        </select>
-                        <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-gray-500 text-xs">▼</div>
+                        <input type="text" id="search-input" oninput="handleSearchInput()" placeholder="検索したいキーワードを入力..." class="w-full p-3 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 outline-none text-sm font-medium text-gray-700">
+                        <button id="search-clear-btn" onclick="clearSearchInput()" class="absolute inset-y-0 right-0 px-3 flex items-center text-gray-400 hover:text-gray-600 hidden">✕</button>
                     </div>
                 </div>
 
-                <div>
-                    <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">並び替え</label>
-                    <div class="relative">
-                        <select id="sort-selector" onchange="handleSortChanged()" class="w-full p-2.5 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 outline-none text-xs font-medium text-gray-700 appearance-none">
-                            <option value="default">標準（更新順）</option>
-                            <option value="shizai_asc">名称（五十音順）</option>
-                            <option value="stock_asc">在庫（少ない順）</option>
-                            <option value="stock_desc">在庫（多い順）</option>
-                        </select>
-                        <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-gray-500 text-xs">▼</div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">対象薬品フィルター</label>
+                        <div class="relative">
+                            <select id="drug-filter" onchange="filterSelectorChanged()" class="w-full p-2.5 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 outline-none text-xs font-bold text-gray-700 appearance-none">
+                                <option value="ALL">全ての薬品</option>
+                            </select>
+                            <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-gray-500 text-xs">▼</div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">並び替え</label>
+                        <div class="relative">
+                            <select id="sort-selector" onchange="handleSortChanged()" class="w-full p-2.5 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 outline-none text-xs font-medium text-gray-700 appearance-none">
+                                <option value="default">標準（更新順）</option>
+                                <option value="shizai_asc">名称（五十音順）</option>
+                                <option value="stock_asc">在庫（少ない順）</option>
+                                <option value="stock_desc">在庫（多い順）</option>
+                            </select>
+                            <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-gray-500 text-xs">▼</div>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
 
-        <hr class="border-gray-300 my-4">
-        
-        <div id="history-section" class="max-w-md mx-auto px-4 mt-4 hidden">
-            <div class="bg-white p-4 rounded-2xl shadow-sm mb-4">
+            <hr class="border-gray-300 my-4">
+            
+            <h2 id="list-title" class="font-bold text-lg mb-3 text-gray-700">資材一覧</h2>
+            
+            <div id="stock-list" class="space-y-2">
+                <p class="text-center text-gray-500 py-8">データを読み込み中...</p>
+            </div>
+
+            <div id="pagination-panel" class="mt-5 flex justify-between items-center bg-white p-2.5 rounded-xl border shadow-sm text-sm hidden">
+                <button id="prev-page-btn" onclick="changePage(-1)" class="bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-700 font-bold py-1.5 px-3 rounded-lg transition disabled:opacity-40 page-btn">
+                    ◀ 前へ
+                </button>
+                <span id="page-info" class="font-bold text-gray-600 select-none">
+                    1 / 1 ページ
+                </span>
+                <button id="next-page-btn" onclick="changePage(1)" class="bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-700 font-bold py-1.5 px-3 rounded-lg transition disabled:opacity-40 page-btn">
+                    次へ ▶
+                </button>
+            </div>
+
+        </div> <div id="history-section" class="max-w-md mx-auto mt-2 hidden">
+            <div class="bg-white p-4 rounded-2xl shadow-sm mb-4 border border-gray-200">
                 <h2 class="text-sm font-bold text-gray-700 mb-3">期間指定・集計</h2>
                 
                 <div class="grid grid-cols-2 gap-2 mb-4">
@@ -183,30 +203,13 @@
                 </div>
             </div>
         
-            <div class="bg-white p-4 rounded-2xl shadow-sm">
+            <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-200">
                 <h2 class="text-sm font-bold text-gray-700 mb-3">履歴一覧（新着順）</h2>
                 <div id="logs-timeline" class="space-y-2 max-h-[400px] overflow-y-auto">
                     </div>
             </div>
         </div>
-        
-        <h2 id="list-title" class="font-bold text-lg mb-3 text-gray-700">資材一覧</h2>
-        
-        <div id="stock-list" class="space-y-2">
-            <p class="text-center text-gray-500 py-8">データを読み込み中...</p>
-        </div>
 
-        <div id="pagination-panel" class="mt-5 flex justify-between items-center bg-white p-2.5 rounded-xl border shadow-sm text-sm hidden">
-            <button id="prev-page-btn" onclick="changePage(-1)" class="bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-700 font-bold py-1.5 px-3 rounded-lg transition disabled:opacity-40 page-btn">
-                ◀ 前へ
-            </button>
-            <span id="page-info" class="font-bold text-gray-600 select-none">
-                1 / 1 ページ
-            </span>
-            <button id="next-page-btn" onclick="changePage(1)" class="bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-700 font-bold py-1.5 px-3 rounded-lg transition disabled:opacity-40 page-btn">
-                次へ ▶
-            </button>
-        </div>
     </main>
 
     <script>
@@ -1384,8 +1387,7 @@
 
         // 💡 画面表示モードとフッタータブの選択状態を切り替える関数
         function switchView(mode) {
-            const stocksContainer = document.getElementById('stocks-container');
-            const controlsSection = document.getElementById('controls-section');
+            const stocksListSection = document.getElementById('stocks-list-section');
             const historySection = document.getElementById('history-section');
             
             // タブボタンの要素を取得
@@ -1393,9 +1395,8 @@
             const tabHistoryBtn = document.getElementById('tab-history-btn');
             
             if (mode === 'history') {
-                // 1. 既存の一覧や検索バーを隠し、履歴エリアを表示する
-                if (stocksContainer) stocksContainer.classList.add('hidden');
-                if (controlsSection) controlsSection.classList.add('hidden');
+                // 1. 資材一覧・検索・タブをすべて非表示にし、履歴エリアだけを表示
+                if (stocksListSection) stocksListSection.classList.add('hidden');
                 if (historySection) historySection.classList.remove('hidden');
                 
                 // 2. フッタータブの色を切り替える（履歴を青に、一覧をグレーに）
@@ -1415,16 +1416,15 @@
                 // 履歴と集計を呼び出す
                 fetchAndAnalyzeLogs();
             } else {
-                // 1. 履歴エリアを隠し、既存の一覧や検索バーを表示する
-                if (stocksContainer) stocksContainer.classList.remove('hidden');
-                if (controlsSection) controlsSection.classList.remove('hidden');
+                // 1. 履歴エリアを非表示にし、資材一覧エリアを再表示
+                if (stocksListSection) stocksListSection.classList.remove('hidden');
                 if (historySection) historySection.classList.add('hidden');
                 
                 // 2. フッタータブの色を切り替える（一覧を青に、履歴をグレーに）
                 tabListBtn.classList.replace('text-gray-400', 'text-blue-600');
                 tabHistoryBtn.classList.replace('text-blue-600', 'text-gray-400');
                 
-                // 資材一覧を再更新
+                // 資材一覧を最新の状態にする
                 fetchStocks();
             }
         }
