@@ -185,6 +185,23 @@
         const ITEMS_PER_PAGE = 10;
 
         let editInitialState = null;
+
+        // 払い出し・入庫の履歴を shizai_logs に書き込む共通関数
+        async function insertShizaiLog(item, type, quantity) {
+            const { error } = await db
+                .from('shizai_logs')
+                .insert([{
+                    shizai_id: item.id,
+                    drug_name: item.drug_name,
+                    shizai_name: item.shizai_name,
+                    type: type,         // '払い出し' または '入庫'
+                    quantity: quantity   // 数量
+                }]);
+        
+            if (error) {
+                console.error("履歴の保存に失敗しました:", error.message);
+            }
+        }
         
         // ページ読み込み時に初期データを取得し、同時にリアルタイム監視を開始
         document.addEventListener("DOMContentLoaded", () => {
@@ -1063,8 +1080,14 @@
             // モーダルの案内文を設定
             messageEl.innerHTML = `<span class="font-bold text-gray-700">${nameStr}</span>を<br>払い出します。個数を選択してください。`;
             
-            // 一時保持用変数にデータをセット（現在の在庫数を引き継ぐため）
-            currentPayoutInfo = { id, currentStock };
+            // ─── ★ここを修正（drugName と shizaiName を追加して引き継ぐ） ───
+            currentPayoutInfo = { 
+                id, 
+                currentStock,
+                drugName: item ? item.drug_name : '不明',
+                shizaiName: item ? item.shizai_name : '不明'
+            };
+            // ──────────────────────────────────────────────────────
             
             // OKボタンに実際のDB更新処理を結びつける
             confirmBtn.onclick = confirmPayoutModal;
@@ -1100,6 +1123,14 @@
                     .eq('id', id);
                     
                 if (error) throw error;
+                
+                // 正常に在庫が減らせたら、履歴に「払い出し」を記録する
+                await insertShizaiLog({
+                    id: id,
+                    drug_name: drugName || '不明',
+                    shizai_name: shizaiName || '不明'
+                }, '払い出し', payoutCount);
+                // ─────────────────────
                 
                 // トースト通知を表示（関数が存在する場合）
                 if (typeof showToast === "function") {
@@ -1149,6 +1180,17 @@
             if (error) {
                 alert("入荷処理エラー: " + error.message);
             } else {
+                // 1. 対象の資材データを取得
+                const item = currentStocksData ? currentStocksData.find(i => i.id === id) : null;
+                
+                // 2. 正常に入荷できたら、履歴に「入庫」を記録
+                await insertShizaiLog({
+                    id: id,
+                    drug_name: item ? item.drug_name : '不明',
+                    shizai_name: item ? item.shizai_name : '不明'
+                }, '入庫', arrivalCount);
+                // ─────────────────────
+                
                 // トースト通知を表示（関数が存在する場合）
                 if (typeof showToast === "function") {
                     showToast(`${arrivalCount} 個 入荷しました`);
