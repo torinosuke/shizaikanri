@@ -1103,7 +1103,7 @@
         async function confirmPayoutModal() {
             if (!currentPayoutInfo) return;
             
-            const { id, currentStock } = currentPayoutInfo;
+            const { id, currentStock, drugName, shizaiName } = currentPayoutInfo;
             const selectEl = document.getElementById('payout-count-select');
             const payoutCount = parseInt(selectEl.value, 10) || 1;
             
