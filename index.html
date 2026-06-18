@@ -189,14 +189,14 @@
         
                 <div class="grid grid-cols-2 gap-3 border-t border-gray-100 pt-3">
                     <div>
-                        <h3 class="text-[10px] font-bold text-red-600 mb-1">🔥 払い出し上位</h3>
-                        <ol id="payout-ranking" class="text-[10px] text-gray-600 list-decimal pl-3 space-y-1">
+                        <h3 class="text-xs font-bold text-red-600 mb-2">🔥 払い出し上位</h3>
+                        <ol id="payout-ranking" class="text-gray-600 list-decimal pl-3 space-y-2">
                             <li class="text-gray-400">データなし</li>
                         </ol>
                     </div>
                     <div>
-                        <h3 class="text-[10px] font-bold text-green-600 mb-1">📦 入庫上位</h3>
-                        <ol id="arrival-ranking" class="text-[10px] text-gray-600 list-decimal pl-3 space-y-1">
+                        <h3 class="text-xs font-bold text-green-600 mb-2">📦 入庫上位</h3>
+                        <ol id="arrival-ranking" class="text-gray-600 list-decimal pl-3 space-y-2">
                             <li class="text-gray-400">データなし</li>
                         </ol>
                     </div>
@@ -1498,15 +1498,24 @@
             const renderRanking = (elementId, data) => {
             const el = document.getElementById(elementId);
             if (data.length === 0) {
-                el.innerHTML = `<li class="text-gray-400 list-none">データなし</li>`;
+                el.innerHTML = `<li class="text-gray-400 list-none text-xs">データなし</li>`;
             } else {
-                // 💡 text-[10px] に小さくし、truncate を削除。leading-tight で行間を詰めて折り返し対応に
-                el.innerHTML = data.map(([name, qty]) => `
-                    <li class="text-[10px] text-gray-700 leading-tight mb-1">
-                        <span class="font-medium">${name.split(' - ')[1]}</span> 
-                        <span class="font-bold text-gray-900 whitespace-nowrap">(${qty}個)</span>
-                    </li>
-                `).join('');
+                // 💡 履歴タイムラインと同じ text-xs に統一し、中の薬品名は text-[10px] で一段小さくメリハリをつけます
+                el.innerHTML = data.map(([name, qty]) => {
+                    const parts = name.split(' - ');
+                    const drugPart = parts[0] ? parts[0] : '';
+                    const shizaiPart = parts[1] ? parts[1] : name;
+                    
+                    return `
+                        <li class="text-xs text-gray-700">
+                            <div class="text-[10px] text-gray-400 font-normal leading-none mb-0.5">${drugPart}</div>
+                            <div class="font-medium">
+                                ${shizaiPart}
+                                <span class="font-bold text-gray-900 whitespace-nowrap ml-0.5">(${qty}個)</span>
+                            </div>
+                        </li>
+                    `;
+                }).join('');
             }
         };
     
