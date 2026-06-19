@@ -790,19 +790,22 @@
                 window.selectedModalKanaRow = availableRow || 'ア';
             }
 
-            // ① 50音インデックスボタンの描画
+            // ① 50音インデックスボタンの描画（💡 数字を無くしてスッキリ化）
             indexContainer.innerHTML = "";
             rows.forEach(row => {
                 const count = groupedDrugs[row].length;
                 const btn = document.createElement('button');
                 const isRowActive = (window.selectedModalKanaRow === row);
                 
-                btn.className = `p-1.5 text-xs font-bold border rounded-lg transition leading-tight ${
+                // 数字がなくなるため、上下パディングを py-2 に調整して正方形に近い綺麗な形にします
+                btn.className = `py-2 text-xs font-bold border rounded-lg transition leading-none ${
                     count === 0 ? 'opacity-25 pointer-events-none bg-gray-50 text-gray-300 border-gray-100' :
                     isRowActive ? 'bg-gray-800 text-white border-gray-800 shadow-sm' :
                     'bg-white text-gray-700 border-gray-200 active:bg-gray-100'
                 }`;
-                btn.innerHTML = `${row}<span class="text-[9px] font-normal opacity-50 block">${count}</span>`;
+                
+                // 💡 薬品数の数字表示（spanタグ）を完全に無くし、50音の文字だけにしました
+                btn.textContent = row; 
                 
                 btn.onclick = (e) => {
                     e.preventDefault();
