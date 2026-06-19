@@ -802,8 +802,13 @@
             });
 
             let filteredItems = currentStocksData.filter(item => {
-                if (selectedDrugFilter !== "ALL" && item.drug_name !== selectedDrugFilter) {
-                    return false;
+                // 💡 変更：入力途中の文字（部分一致）でもヒットするように修正
+                if (selectedDrugFilter !== "ALL") {
+                    const normalizedFilter = normalizeString(selectedDrugFilter);
+                    const normalizedDrugName = normalizeString(item.drug_name);
+                    if (!normalizedDrugName.includes(normalizedFilter)) {
+                        return false;
+                    }
                 }
                 if (searchQuery) {
                     const normalizedQuery = normalizeString(searchQuery);
