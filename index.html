@@ -127,10 +127,10 @@
                     <div>
                         <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">対象薬品フィルター</label>
                         <div class="relative">
-                            <select id="drug-filter" onchange="filterSelectorChanged()" class="w-full p-2.5 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 outline-none text-xs font-bold text-gray-700 appearance-none">
-                                <option value="ALL">全ての薬品</option>
-                            </select>
-                            <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-gray-500 text-xs">▼</div>
+                            <input type="text" id="drug-filter" oninput="filterSelectorChanged()" placeholder="薬品名を入力して絞り込み..." class="w-full p-2.5 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 outline-none text-xs font-bold text-gray-700">
+                            <button onclick="document.getElementById('drug-filter').value=''; filterSelectorChanged();" class="absolute inset-y-0 right-0 px-2.5 flex items-center text-gray-400 hover:text-gray-600 text-xs">✕</button>
+                            
+                            <datalist id="drug-list"></datalist>
                         </div>
                     </div>
 
@@ -304,9 +304,19 @@
         }
 
         function filterSelectorChanged() {
-            selectedDrugFilter = document.getElementById("drug-filter").value;
+            const filterValue = document.getElementById('drug-filter').value.trim();
+            
+            // もし空欄なら「すべての薬品（ALL）」として扱う
+            if (filterValue === '') {
+                // 全件表示のロジック
+                currentDrugFilter = 'ALL';
+            } else {
+                currentDrugFilter = filterValue;
+            }
+            
+            // 既存のページリセットと再描画処理
             currentPage = 1;
-            renderStockList();
+            renderStocks();
         }
 
         function handleSortChanged() {
@@ -713,19 +723,18 @@
         }
 
         function updateDrugFilterOptions() {
-            const filterElement = document.getElementById("drug-filter");
-            const drugNames = [...new Set(currentStocksData.map(item => item.drug_name))]
-                .sort((a, b) => a.localeCompare(b, 'ja'));
-
-            filterElement.innerHTML = `<option value="ALL">全ての薬品</option>`;
-            drugNames.forEach(name => {
-                const selectedAttr = (name === selectedDrugFilter) ? "selected" : "";
-                filterElement.innerHTML += `<option value="${name}" ${selectedAttr}>${name}</option>`;
+            const datalist = document.getElementById('drug-list');
+            if (!datalist) return;
+        
+            // 一旦クリア
+            datalist.innerHTML = '';
+        
+            // 薬品名を datalist の option として追加
+            drugs.forEach(drug => {
+                const option = document.createElement('option');
+                option.value = drug; // スマホではこれが検索候補として出ます
+                datalist.appendChild(option);
             });
-            if (selectedDrugFilter !== "ALL" && !drugNames.includes(selectedDrugFilter)) {
-                selectedDrugFilter = "ALL";
-                filterElement.value = "ALL";
-            }
         }
 
         function updateAddFormDrugOptions() {
