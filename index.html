@@ -123,31 +123,30 @@
                     </div>
                 </div>
 
-                <div class="space-y-3 pt-1">
-                    <div>
-                        <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">並び替え</label>
-                        <div class="relative">
-                            <select id="sort-selector" onchange="handleSortChanged()" class="w-full p-2.5 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 outline-none text-xs font-medium text-gray-700 appearance-none">
+                <div class="space-y-1.5 pt-1">
+                    
+                    <div class="flex items-center space-x-2">
+                        <div class="relative w-2/5">
+                            <select id="sort-selector" onchange="handleSortChanged()" class="w-full p-1.5 bg-gray-50 border border-gray-300 rounded-md outline-none text-[11px] font-bold text-gray-700 appearance-none">
                                 <option value="default">標準（更新順）</option>
-                                <option value="shizai_asc">名称（五十音順）</option>
-                                <option value="stock_asc">在庫（少ない順）</option>
-                                <option value="stock_desc">在庫（多い順）</option>
+                                <option value="shizai_asc">名称50音順</option>
+                                <option value="stock_asc">在庫（少）</option>
+                                <option value="stock_desc">在庫（多）</option>
                             </select>
-                            <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-gray-500 text-xs">▼</div>
+                            <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-1.5 text-gray-400 text-[9px]">▼</div>
+                        </div>
+                        
+                        <div id="active-drug-badge" class="hidden flex-1 flex items-center justify-between bg-blue-50 border border-blue-200 text-blue-700 px-2 py-1 rounded-md text-[11px] font-bold min-w-0">
+                            <span id="active-drug-name" class="truncate mr-1">選択: -</span>
+                            <button onclick="clearDrugFilter()" class="bg-blue-600 text-white px-1.5 py-0.5 rounded text-[9px] font-bold shrink-0">✕ 解除</button>
                         </div>
                     </div>
 
-                    <div>
-                        <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">対象薬品フィルター（50音順）</label>
-                        
-                        <div id="active-drug-badge" class="mb-2 hidden flex items-center justify-between bg-blue-50 border border-blue-200 text-blue-700 px-3 py-2 rounded-lg text-xs font-bold">
-                            <span id="active-drug-name">選択中: -</span>
-                            <button onclick="clearDrugFilter()" class="bg-blue-600 text-white px-2 py-0.5 rounded text-xxs font-bold hover:bg-blue-700 transition">✕ 解除</button>
+                    <div id="drug-kana-indices" class="grid grid-cols-6 gap-1 text-center">
                         </div>
-                        
-                        <div id="drug-kana-accordion" class="border border-gray-200 rounded-lg overflow-hidden bg-white text-xs divide-y divide-gray-100 shadow-sm">
-                            </div>
-                    </div>
+
+                    <div id="drug-kana-sub-content" class="hidden p-1.5 bg-gray-50 border border-gray-200 rounded-md flex flex-wrap gap-1">
+                        </div>
                 </div>
             </div>
 
@@ -305,23 +304,7 @@
             document.getElementById("list-title").scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
 
-        function filterSelectorChanged() {
-            const filterInput = document.getElementById('drug-filter');
-            if (!filterInput) return;
-            
-            const value = filterInput.value.trim();
-            
-            // もし空欄なら「全ての薬品（ALL）」にする
-            if (value === '') {
-                selectedDrugFilter = 'ALL';
-            } else {
-                selectedDrugFilter = value;
-            }
-            
-            currentPage = 1;
-            // 💡 お使いのコードの正しい描画関数は renderStockList です
-            renderStockList();
-        }
+        function filterSelectorChanged() {}
 
         function handleSortChanged() {
             currentPage = 1;
@@ -726,130 +709,121 @@
             }
         }
 
-        // ==========================================
-        // 💡 新設：薬品名を50音（アカサタナ）の行に分類する関数
-        // ==========================================
-        function getKanaRow(name) {
-            if (!name) return 'その他';
-            // 元のコードにある normalizeString を使って英字小文字化＆ひらがなに統一して1文字目を取得します
-            const firstChar = normalizeString(name).charAt(0);
-            
-            if ('あいうえおぁぃぅぇぉゔ'.includes(firstChar)) return 'ア行';
-            if ('かきくけこがぎぐげご'.includes(firstChar)) return 'カ行';
-            if ('さしすせそざじずぜぞ'.includes(firstChar)) return 'サ行';
-            if ('たちつてとだぢづでどっ'.includes(firstChar)) return 'タ行';
-            if ('なにぬねの'.includes(firstChar)) return 'ナ行';
-            if ('はひふへほばびぶべぼぱぴぷぺぽ'.includes(firstChar)) return 'ハ行';
-            if ('まみむめも'.includes(firstChar)) return 'マ行';
-            if ('やゆよゃゅょ'.includes(firstChar)) return 'ヤ行';
-            if ('らりるれろ'.includes(firstChar)) return 'ラ行';
-            if ('わをんゎ'.includes(firstChar)) return 'ワ行';
-            
-            // 英字から始まる薬品名の場合（例: A, B..）
-            if (/[a-zA-Z]/.test(firstChar)) return firstChar.toUpperCase() + '行';
-            return 'その他';
+        // 50音のどの行（ア、カ、サ…）がタップされているかを管理する変数
+        if (typeof window.selectedKanaRow === 'undefined') {
+            window.selectedKanaRow = null;
         }
 
-        // ==========================================
-        // 💡 50音順アコーディオンを動的に生成するメイン関数
-        // ==========================================
         function updateDrugFilterOptions() {
-            const container = document.getElementById("drug-kana-accordion");
-            if (!container) return;
+            const indexContainer = document.getElementById("drug-kana-indices");
+            const subContainer = document.getElementById("drug-kana-sub-content");
+            if (!indexContainer || !subContainer) return;
 
-            // データベースから重複のない薬品名を取得してソート
+            // 重複のない薬品名を取得してソート
             const drugNames = [...new Set(currentStocksData.map(item => item.drug_name))]
                 .sort((a, b) => a.localeCompare(b, 'ja'));
 
-            // 50音のグループ箱を用意
-            const rows = ['ア行', 'カ行', 'サ行', 'タ行', 'ナ行', 'ハ行', 'マ行', 'ヤ行', 'ラ行', 'ワ行', 'その他'];
+            const rows = ['ア', 'カ', 'サ', 'タ', 'ナ', 'ハ', 'マ', 'ヤ', 'ラ', 'ワ', '他'];
+            
+            // 各行に薬品を振り分ける箱を用意
             const groupedDrugs = {};
             rows.forEach(r => groupedDrugs[r] = []);
-
-            // 薬品をそれぞれの行に振り分ける
+            
             drugNames.forEach(name => {
-                const row = getKanaRow(name);
+                let row = '他';
+                if (name) {
+                    const firstChar = normalizeString(name).charAt(0);
+                    if ('あいうえおぁぃぅぇぉゔ'.includes(firstChar)) row = 'ア';
+                    else if ('かきくけこがぎぐげご'.includes(firstChar)) row = 'カ';
+                    else if ('さしすせそざじずぜぞ'.includes(firstChar)) row = 'サ';
+                    else if ('たちつてとだぢづでどっ'.includes(firstChar)) row = 'タ';
+                    else if ('なにぬねの'.includes(firstChar)) row = 'ナ';
+                    else if ('はひふへほばびぶべぼぱぴぷぺぽ'.includes(firstChar)) row = 'ハ';
+                    else if ('まみむめも'.includes(firstChar)) row = 'マ';
+                    else if ('やゆよゃゅょ'.includes(firstChar)) row = 'ヤ';
+                    else if ('らりるれろ'.includes(firstChar)) row = 'ラ';
+                    else if ('わをんゎ'.includes(firstChar)) row = 'ワ';
+                }
                 if (groupedDrugs[row]) {
                     groupedDrugs[row].push(name);
                 } else {
-                    groupedDrugs['その他'].push(name);
+                    groupedDrugs['他'].push(name);
                 }
             });
 
-            container.innerHTML = "";
-            let hasAnyDrugs = false;
-
-            // 各行のアコーディオン（details）を組み立て
+            // ① 50音ミニボタンの生成（薬品が0個の行は非表示）
+            indexContainer.innerHTML = "";
             rows.forEach(row => {
-                const drugsInRow = groupedDrugs[row];
-                if (drugsInRow.length === 0) return; // その行に薬品が1つもなければ非表示
-                hasAnyDrugs = true;
+                const count = groupedDrugs[row].length;
+                if (count === 0) return;
 
-                const details = document.createElement('details');
-                details.className = "bg-white text-gray-700";
+                const btn = document.createElement('button');
+                const isRowActive = (window.selectedKanaRow === row);
+                
+                // タップされた50音行は黒ベース、それ以外は白ベース
+                btn.className = `p-1 text-[11px] font-bold border rounded transition leading-tight ${
+                    isRowActive 
+                    ? 'bg-gray-800 text-white border-gray-800' 
+                    : 'bg-white text-gray-600 border-gray-200 active:bg-gray-100'
+                }`;
+                btn.innerHTML = `${row}<span class="text-[9px] font-normal opacity-50 block">${count}</span>`;
+                
+                btn.onclick = (e) => {
+                    e.preventDefault();
+                    // 同じ行をもう一度押したら閉じ、別の行なら切り替える
+                    window.selectedKanaRow = isRowActive ? null : row;
+                    updateDrugFilterOptions();
+                };
+                indexContainer.appendChild(btn);
+            });
 
-                const summary = document.createElement('summary');
-                // [&::-webkit-details-marker]:hidden でブラウザ標準の小さな三角矢印を消します
-                summary.className = "flex justify-between items-center p-2.5 font-bold cursor-pointer hover:bg-gray-50 list-none outline-none select-none text-xs border-b border-gray-100 [&::-webkit-details-marker]:hidden";
-                summary.innerHTML = `
-                    <div class="flex items-center space-x-1.5">
-                        <span class="text-blue-500 text-[10px]">📁</span>
-                        <span>${row}</span>
-                        <span class="text-[10px] font-normal text-gray-400 font-sans">(${drugsInRow.length}つの薬品)</span>
-                    </div>
-                    <span class="text-gray-400 text-[10px]">▼</span>
-                `;
-
-                // 開いたときに薬品ボタンが並ぶエリア
-                const contentDiv = document.createElement('div');
-                contentDiv.className = "p-2.5 bg-gray-50 border-b border-gray-100 flex flex-wrap gap-1.5";
-
-                drugsInRow.forEach(drug => {
+            // ② タップされた50音に属する薬品たちをすぐ下に展開
+            subContainer.innerHTML = "";
+            if (window.selectedKanaRow && groupedDrugs[window.selectedKanaRow] && groupedDrugs[window.selectedKanaRow].length > 0) {
+                subContainer.classList.remove("hidden");
+                
+                groupedDrugs[window.selectedKanaRow].forEach(drug => {
                     const btn = document.createElement('button');
                     const isSelected = (selectedDrugFilter === drug);
                     
-                    // 現在選ばれている薬品は「青色のバッジ」、それ以外は「白ボタン」にする
-                    btn.className = `px-2.5 py-1.5 rounded-lg text-[11px] font-bold border transition ${
+                    btn.className = `px-2 py-1 rounded text-[11px] font-bold border transition ${
                         isSelected 
                         ? 'bg-blue-600 text-white border-blue-600 shadow-sm' 
-                        : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400 active:bg-gray-100'
+                        : 'bg-white text-gray-600 border-gray-200 active:bg-gray-100'
                     }`;
                     btn.textContent = drug;
                     btn.onclick = (e) => {
                         e.preventDefault();
-                        selectDrugFilter(drug); // 薬品を選択
+                        selectedDrugFilter = drug;
+                        currentPage = 1;
+                        renderStockList();
+                        updateDrugFilterOptions();
                     };
-                    contentDiv.appendChild(btn);
+                    subContainer.appendChild(btn);
                 });
-
-                details.appendChild(summary);
-                details.appendChild(contentDiv);
-                container.appendChild(details);
-            });
-
-            if (!hasAnyDrugs) {
-                container.innerHTML = `<p class="text-center text-gray-400 py-4 text-xs">登録されている薬品がありません</p>`;
+            } else {
+                subContainer.classList.add("hidden");
             }
 
-            // 上部の「選択中バッジ」の表示状態を更新
-            updateActiveDrugBadge();
+            // ③ 上部の「選択中バッジ」を連動
+            const badge = document.getElementById("active-drug-badge");
+            const nameSpan = document.getElementById("active-drug-name");
+            if (badge && nameSpan) {
+                if (selectedDrugFilter && selectedDrugFilter !== "ALL") {
+                    nameSpan.textContent = `選択: ${selectedDrugFilter}`;
+                    badge.classList.remove("hidden");
+                } else {
+                    badge.classList.add("hidden");
+                }
+            }
         }
 
-        // ==========================================
-        // 💡 補助関数：薬品を選択したとき・解除したときの挙動
-        // ==========================================
-        function selectDrugFilter(drugName) {
-            selectedDrugFilter = drugName;
-            currentPage = 1;
-            renderStockList();
-            updateDrugFilterOptions(); // ボタンの色（選択状態）を即座に切り替えるため再描画
-        }
-
+        // フィルター解除処理
         function clearDrugFilter() {
             selectedDrugFilter = "ALL";
             currentPage = 1;
             renderStockList();
-            updateDrugFilterOptions(); // バッジの非表示とボタンの色をリセット
+            updateDrugFilterOptions();
         }
 
         function updateActiveDrugBadge() {
