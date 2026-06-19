@@ -1132,11 +1132,11 @@
             const sortMethod = document.getElementById("sort-selector")?.value || "default";
             
             if (sortMethod === "shizai_asc") {
-                stocksArray.sort((a, b) => a.shizai_name.localeCompare(b.shizai_name, 'ja'));
+                filteredItems.sort((a, b) => a.shizai_name.localeCompare(b.shizai_name, 'ja'));
             } else if (sortMethod === "stock_asc") {
-                stocksArray.sort((a, b) => a.current_stock - b.current_stock);
+                filteredItems.sort((a, b) => a.current_stock - b.current_stock);
             } else if (sortMethod === "stock_desc") {
-                stocksArray.sort((a, b) => b.current_stock - a.current_stock);
+                filteredItems.sort((a, b) => b.current_stock - a.current_stock);
             } else if (sortMethod === "payout_count_desc") {
                 // 🌟 新規追加：過去全件の「払い出し数」を集計してソート
                 const payoutCounts = {};
@@ -1150,7 +1150,7 @@
                     }
                 });
             
-                stocksArray.sort((a, b) => {
+                filteredItems.sort((a, b) => {
                     const countA = payoutCounts[a.id] || 0;
                     const countB = payoutCounts[b.id] || 0;
                     
@@ -1163,7 +1163,7 @@
                 });
             } else {
                 // デフォルト（ID順・更新順）
-                stocksArray.sort((a, b) => a.id - b.id);
+                filteredItems.sort((a, b) => a.id - b.id);
             }
 
             const totalItems = filteredItems.length;
