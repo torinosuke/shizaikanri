@@ -304,19 +304,24 @@
         }
 
         function filterSelectorChanged() {
-            const filterValue = document.getElementById('drug-filter').value.trim();
+            const filterInput = document.getElementById('drug-filter');
+            if (!filterInput) return;
             
-            // もし空欄なら「すべての薬品（ALL）」として扱う
-            if (filterValue === '') {
-                // 全件表示のロジック
-                currentDrugFilter = 'ALL';
+            const value = filterInput.value.trim();
+            
+            // 💡 もし空欄なら「全ての薬品（ALL）」にする（★selectedDrugFilterに修正）
+            if (value === '') {
+                selectedDrugFilter = 'ALL';
             } else {
-                currentDrugFilter = filterValue;
+                selectedDrugFilter = value;
             }
             
-            // 既存のページリセットと再描画処理
             currentPage = 1;
             renderStocks();
+            
+            // タブの選択状態も同期させるために再描画
+            const uniqueDrugs = [...new Set(currentStocksData.map(item => item.drug_name))].filter(Boolean);
+            renderDrugTabs(uniqueDrugs);
         }
 
         function handleSortChanged() {
@@ -741,9 +746,9 @@
                 datalistElement.appendChild(opt);
             });
             
-            // 💡 選択されていた薬品がデータから消えた場合の安全処理
-            if (currentDrugFilter !== "ALL" && !drugNames.includes(currentDrugFilter)) {
-                currentDrugFilter = "ALL";
+            // 💡 選択されていた薬品がデータから消えた場合の安全処理（★selectedDrugFilterに修正）
+            if (selectedDrugFilter !== "ALL" && !drugNames.includes(selectedDrugFilter)) {
+                selectedDrugFilter = "ALL";
                 if (filterInput) filterInput.value = ""; // 入力欄を空にする
             }
 
