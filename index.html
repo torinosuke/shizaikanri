@@ -309,7 +309,7 @@
             
             const value = filterInput.value.trim();
             
-            // 💡 もし空欄なら「全ての薬品（ALL）」にする（★selectedDrugFilterに修正）
+            // もし空欄なら「全ての薬品（ALL）」にする
             if (value === '') {
                 selectedDrugFilter = 'ALL';
             } else {
@@ -317,11 +317,8 @@
             }
             
             currentPage = 1;
-            renderStocks();
-            
-            // タブの選択状態も同期させるために再描画
-            const uniqueDrugs = [...new Set(currentStocksData.map(item => item.drug_name))].filter(Boolean);
-            renderDrugTabs(uniqueDrugs);
+            // 💡 お使いのコードの正しい描画関数は renderStockList です
+            renderStockList();
         }
 
         function handleSortChanged() {
@@ -329,7 +326,7 @@
             renderStockList();
         }
 
-// 💡 変更：アラートに「薬剤名：資材名」をセットで表示するように改良
+        // 💡 変更：アラートに「薬剤名：資材名」をセットで表示するように改良
         function resetToAllDrugs() {
             const addForm = document.getElementById("add-form-section");
             
@@ -728,32 +725,32 @@
         }
 
         function updateDrugFilterOptions() {
-            // 💡 ターゲットを select から datalist (#drug-list) に変更します
+            // 💡 データリスト要素を取得
             const datalistElement = document.getElementById("drug-list");
-            const filterInput = document.getElementById("drug-filter"); // input側も取得
+            const filterInput = document.getElementById("drug-filter");
             if (!datalistElement) return;
 
+            // 重複のない薬品名リストを取得してソート
             const drugNames = [...new Set(currentStocksData.map(item => item.drug_name))]
                 .sort((a, b) => a.localeCompare(b, 'ja'));
 
-            // 💡 datalist の中身を一旦空にする
+            // データリストの中身を一旦空にする
             datalistElement.innerHTML = "";
             
+            // 予測候補となる option 要素を追加
             drugNames.forEach(name => {
-                // 💡 datalist 用の option 要素を作成して追加
                 const opt = document.createElement('option');
-                opt.value = name; // これがキーボード上の予測候補になります
+                opt.value = name; 
                 datalistElement.appendChild(opt);
             });
             
-            // 💡 選択されていた薬品がデータから消えた場合の安全処理（★selectedDrugFilterに修正）
+            // 選択されていた薬品がデータから消えた場合の安全処理
             if (selectedDrugFilter !== "ALL" && !drugNames.includes(selectedDrugFilter)) {
                 selectedDrugFilter = "ALL";
-                if (filterInput) filterInput.value = ""; // 入力欄を空にする
+                if (filterInput) filterInput.value = "";
             }
-
-            // 💡 存在する変数 drugNames を渡してタブ側も同期・再描画させる
-            renderDrugTabs(drugNames);
+            
+            // 存在しないタブ生成関数の呼び出しをすべて削除しました
         }
 
         function updateAddFormDrugOptions() {
