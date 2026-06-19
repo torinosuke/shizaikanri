@@ -589,9 +589,7 @@
         }
 
         async function addNewShizai() {
-            const selectElement = document.getElementById("input-drug-select");
-            const textInputElement = document.getElementById("input-drug-text");
-            
+            const selectElement = document.getElementById("input-drug-select"); 
             const textInputElement = document.getElementById("input-drug-text");
             let drug = (window.selectedAddFormDrug === "__NEW__") ? textInputElement.value.trim() : window.selectedAddFormDrug;
             const shizai = document.getElementById("input-shizai").value.trim();
