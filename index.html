@@ -708,27 +708,23 @@
             }
         }
 
-        // モーダル内で選択されている50音行を保持する変数
+        // 💡 初期選択を「ア行」に変更
         if (typeof window.selectedModalKanaRow === 'undefined') {
-            window.selectedModalKanaRow = 'ア'; // 初期はア行を開いておく
+            window.selectedModalKanaRow = 'ア行'; 
         }
 
-        // 1. モーダルを開く
         function openDrugFilterModal() {
             const modal = document.getElementById("drug-filter-modal");
             const content = document.getElementById("drug-filter-modal-content");
             if (!modal || !content) return;
 
-            // モーダル内の50音と中身を最新データで更新
             updateDrugFilterModalOptions();
 
-            // アニメーション付きで表示
             modal.classList.remove("opacity-0", "pointer-events-none");
             content.classList.remove("translate-y-full", "sm:scale-95");
             content.classList.add("translate-y-0", "sm:scale-100");
         }
 
-        // 2. モーダルを閉じる
         function closeDrugFilterModal() {
             const modal = document.getElementById("drug-filter-modal");
             const content = document.getElementById("drug-filter-modal-content");
@@ -739,7 +735,6 @@
             content.classList.add("translate-y-full", "sm:scale-95");
         }
 
-        // 3. モーダル内の表示データを動的に生成するコアロジック
         function updateDrugFilterModalOptions() {
             const indexContainer = document.getElementById("modal-kana-indices");
             const chipsContainer = document.getElementById("modal-drug-chips");
@@ -748,63 +743,59 @@
             
             if (!indexContainer || !chipsContainer || !countLabel || !btnAll) return;
 
-            // 重複のない薬品名を取得してソート
             const drugNames = [...new Set(currentStocksData.map(item => item.drug_name))]
                 .filter(Boolean)
                 .sort((a, b) => a.localeCompare(b, 'ja'));
 
             countLabel.textContent = `${drugNames.length}件`;
 
-            // 「すべての薬品」ボタンの装飾
             if (selectedDrugFilter === "ALL") {
                 btnAll.className = "w-full py-2.5 px-4 rounded-xl font-bold border text-center bg-blue-600 text-white border-blue-600 shadow-md";
             } else {
                 btnAll.className = "w-full py-2.5 px-4 rounded-xl font-bold border text-center bg-white text-gray-700 border-gray-200 hover:bg-gray-50 active:bg-gray-100 shadow-sm";
             }
 
-            const rows = ['ア', 'カ', 'サ', 'タ', 'ナ', 'ハ', 'マ', 'ヤ', 'ラ', 'ワ', '他'];
+            // 💡 表記を「〇行」「その他」に変更
+            const rows = ['ア行', 'カ行', 'サ行', 'タ行', 'ナ行', 'ハ行', 'マ行', 'ヤ行', 'ラ行', 'ワ行', 'その他'];
             const groupedDrugs = {};
             rows.forEach(r => groupedDrugs[r] = []);
             
             drugNames.forEach(name => {
-                let row = '他';
+                let row = 'その他';
                 const firstChar = normalizeString(name).charAt(0);
-                if ('あいうえおぁぃぅぇぉゔ'.includes(firstChar)) row = 'ア';
-                else if ('かきくけこがぎぐげご'.includes(firstChar)) row = 'カ';
-                else if ('さしすせそざじずぜぞ'.includes(firstChar)) row = 'サ';
-                else if ('たちつてとだぢづでどっ'.includes(firstChar)) row = 'タ';
-                else if ('なにぬねの'.includes(firstChar)) row = 'ナ';
-                else if ('はひふへほばびぶべぼぱぴぷぺぽ'.includes(firstChar)) row = 'ハ';
-                else if ('まみむめも'.includes(firstChar)) row = 'マ';
-                else if ('やゆよゃゅょ'.includes(firstChar)) row = 'ヤ';
-                else if ('らりるれろ'.includes(firstChar)) row = 'ラ';
-                else if ('わをんゎ'.includes(firstChar)) row = 'ワ';
+                if ('あいうえおぁぃぅぇぉゔ'.includes(firstChar)) row = 'ア行';
+                else if ('かきくけこがぎぐげご'.includes(firstChar)) row = 'カ行';
+                else if ('さしすせそざじずぜぞ'.includes(firstChar)) row = 'サ行';
+                else if ('たちつてとだぢづでどっ'.includes(firstChar)) row = 'タ行';
+                else if ('なにぬねの'.includes(firstChar)) row = 'ナ行';
+                else if ('はひふへほばびぶべぼぱぴぷぺぽ'.includes(firstChar)) row = 'ハ行';
+                else if ('まみむめも'.includes(firstChar)) row = 'マ行';
+                else if ('やゆよゃゅょ'.includes(firstChar)) row = 'ヤ行';
+                else if ('らりるれろ'.includes(firstChar)) row = 'ラ行';
+                else if ('わをんゎ'.includes(firstChar)) row = 'ワ行';
                 
                 if (groupedDrugs[row]) groupedDrugs[row].push(name);
-                else groupedDrugs['他'].push(name);
+                else groupedDrugs['その他'].push(name);
             });
 
-            // 現在選ばれている50音行に薬品が1つも無ければ、存在する別の行を自動選択
             if (groupedDrugs[window.selectedModalKanaRow].length === 0) {
                 const availableRow = rows.find(r => groupedDrugs[r].length > 0);
-                window.selectedModalKanaRow = availableRow || 'ア';
+                window.selectedModalKanaRow = availableRow || 'ア行';
             }
 
-            // ① 50音インデックスボタンの描画（💡 数字を無くしてスッキリ化）
+            // ① 50音インデックスボタンの描画
             indexContainer.innerHTML = "";
             rows.forEach(row => {
                 const count = groupedDrugs[row].length;
                 const btn = document.createElement('button');
                 const isRowActive = (window.selectedModalKanaRow === row);
                 
-                // 数字がなくなるため、上下パディングを py-2 に調整して正方形に近い綺麗な形にします
-                btn.className = `py-2 text-xs font-bold border rounded-lg transition leading-none ${
+                // 「〇行」の2文字が入るため、文字サイズを text-[11px]、上下パディングを py-2 に最適化
+                btn.className = `py-2 text-[11px] font-bold border rounded-lg transition leading-none ${
                     count === 0 ? 'opacity-25 pointer-events-none bg-gray-50 text-gray-300 border-gray-100' :
                     isRowActive ? 'bg-gray-800 text-white border-gray-800 shadow-sm' :
                     'bg-white text-gray-700 border-gray-200 active:bg-gray-100'
                 }`;
-                
-                // 💡 薬品数の数字表示（spanタグ）を完全に無くし、50音の文字だけにしました
                 btn.textContent = row; 
                 
                 btn.onclick = (e) => {
@@ -817,7 +808,7 @@
 
             // ② 薬品名チップの描画
             chipsContainer.innerHTML = "";
-            document.getElementById("modal-sub-label").textContent = `「${window.selectedModalKanaRow}行」の薬品 (${groupedDrugs[window.selectedModalKanaRow].length}件)`;
+            document.getElementById("modal-sub-label").textContent = `「${window.selectedModalKanaRow}」の薬品 (${groupedDrugs[window.selectedModalKanaRow].length}件)`;
 
             if (groupedDrugs[window.selectedModalKanaRow].length === 0) {
                 chipsContainer.innerHTML = `<p class="text-xs text-gray-400 m-auto py-4">この行の薬品はありません</p>`;
@@ -828,7 +819,7 @@
                     
                     btn.className = `px-3 py-1.5 rounded-lg text-xs font-bold border transition ${
                         isSelected 
-                        ? 'bg-blue-600 text-white border-blue-600 shadow-md scale-95' 
+                        ? 'bg-blue-600 text-white border-blue-600 shadow-md' 
                         : 'bg-white text-gray-700 border-gray-200 active:bg-gray-100'
                     }`;
                     btn.textContent = drug;
@@ -841,12 +832,10 @@
             }
         }
 
-        // 4. 薬品が選ばれたときの確定＆反映処理
         function selectDrugFromModal(drug) {
             selectedDrugFilter = drug;
             currentPage = 1;
 
-            // メイン画面のトリガーボタンの文字と色を更新
             const triggerText = document.getElementById("modal-filter-btn-text");
             const triggerBtn = document.getElementById("modal-filter-trigger-btn");
             if (triggerText && triggerBtn) {
@@ -859,15 +848,12 @@
                 }
             }
 
-            // 一覧を再描画して、ポップアップを閉じる
             renderStockList();
             closeDrugFilterModal();
         }
 
-        // 古いアコーディオン用関数のダミーを用意（エラー防止用）
         function filterSelectorChanged() {}
         function updateDrugFilterOptions() {
-            // 他の初期化処理から呼ばれた時のため、メインボタンの表記だけ同期させる
             selectDrugFromModal(selectedDrugFilter);
         }
         function handleSortChanged() {
@@ -1775,13 +1761,13 @@
 
                 <div>
                     <label class="block text-xxs font-bold text-gray-400 uppercase mb-1.5 tracking-wider">50音インデックス</label>
-                    <div id="modal-kana-indices" class="grid grid-cols-6 gap-1 text-center">
+                    <div id="modal-kana-indices" class="grid grid-cols-4 gap-1 text-center">
                         </div>
                 </div>
 
                 <div>
                     <label class="block text-xxs font-bold text-gray-400 uppercase mb-1.5 tracking-wider" id="modal-sub-label">選択した行の薬品名</label>
-                    <div id="modal-drug-chips" class="flex flex-wrap gap-1.5 bg-gray-50 p-2.5 rounded-xl border border-gray-200 min-h-[60px]">
+                    <div id="modal-drug-chips" class="h-40 overflow-y-auto content-start flex flex-wrap gap-1.5 bg-gray-50 p-2.5 rounded-xl border border-gray-200">
                         </div>
                 </div>
             </div>
