@@ -144,6 +144,7 @@
                                 <option value="shizai_asc">名称50音順</option>
                                 <option value="stock_asc">在庫（少）</option>
                                 <option value="stock_desc">在庫（多）</option>
+                                <option value="payout_count_desc">🔥払出し数の多い順（過去全件）</option>
                             </select>
                             <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500 text-xs">▼</div>
                         </div>
@@ -229,6 +230,7 @@
         try { db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY); } catch (e) { console.error(e); }
 
         let currentStocksData = [];
+        let allTimeHistoryLogs = []; // 🌟 追加：過去全件の履歴ログを保持する配列
         let editingId = null;
         let selectedDrugFilter = "ALL";
         let openedCardId = null;
@@ -857,11 +859,46 @@
         function updateDrugFilterOptions() {
             selectDrugFromModal(selectedDrugFilter);
         }
-        function handleSortChanged() {
+        
+        async function handleSortChanged() {
+            const sortSelector = document.getElementById("sort-selector");
+            if (!sortSelector) return;
+            
+            const selectedMethod = sortSelector.value;
+            
+            // 「払い出し数順」が選ばれ、かつまだ履歴ログを読み込んでいない場合、過去全件を取得する
+            if (selectedMethod === "payout_count_desc" && allTimeHistoryLogs.length === 0) {
+                if (!navigator.onLine) {
+                    alert("⚠️ 現在オフラインのため、過去全件の払い出し数を集計できません。標準順に戻します。");
+                    sortSelector.value = "default";
+                    return;
+                }
+                
+                // トースター等で読み込み中を伝える（もし必要であれば）
+                if (typeof showToast === "function") showToast("📊 過去の全件履歴を集計中...");
+                
+                try {
+                    // shizai_logs テーブルから過去全件の「払い出し」ログのみを効率的に取得
+                    const { data, error } = await db
+                        .from('shizai_logs')
+                        .select('shizai_id, type, quantity')
+                        .eq('type', '払い出し');
+                        
+                    if (error) throw error;
+                    
+                    allTimeHistoryLogs = data || [];
+                } catch (e) {
+                    console.error("過去全件履歴の取得に失敗しました:", e.message);
+                    alert("履歴データの取得に失敗しました。時間をおいてお試しください。");
+                    sortSelector.value = "default";
+                    return;
+                }
+            }
+            
             currentPage = 1;
             renderStockList();
         }
-
+        
         function updateActiveDrugBadge() {
             const badge = document.getElementById("active-drug-badge");
             const nameSpan = document.getElementById("active-drug-name");
@@ -1091,25 +1128,43 @@
                 return true;
             });
 
-            const sortMethod = document.getElementById("sort-selector").value;
-            filteredItems.sort((a, b) => {
-                const aIsUrgent = (a.is_ordering || (a.current_stock < a.min_stock)) ? 1 : 0;
-                const bIsUrgent = (b.is_ordering || (b.current_stock < b.min_stock)) ? 1 : 0;
-
-                if (aIsUrgent !== bIsUrgent) { return bIsUrgent - aIsUrgent; }
-
-                if (sortMethod === "shizai_asc") {
-                    return (a.shizai_name || "").localeCompare((b.shizai_name || ""), 'ja');
-                } else if (sortMethod === "stock_asc") {
-                    return (a.current_stock || 0) - (b.current_stock || 0);
-                } else if (sortMethod === "stock_desc") {
-                    return (b.current_stock || 0) - (a.current_stock || 0);
-                }
+            // 💡 ソート処理の適用部分を以下のように修正・拡張します
+            const sortMethod = document.getElementById("sort-selector")?.value || "default";
+            
+            if (sortMethod === "shizai_asc") {
+                stocksArray.sort((a, b) => a.shizai_name.localeCompare(b.shizai_name, 'ja'));
+            } else if (sortMethod === "stock_asc") {
+                stocksArray.sort((a, b) => a.current_stock - b.current_stock);
+            } else if (sortMethod === "stock_desc") {
+                stocksArray.sort((a, b) => b.current_stock - a.current_stock);
+            } else if (sortMethod === "payout_count_desc") {
+                // 🌟 新規追加：過去全件の「払い出し数」を集計してソート
+                const payoutCounts = {};
                 
-                const aTime = a.updated_at ? new Date(a.updated_at).getTime() : 0;
-                const bTime = b.updated_at ? new Date(b.updated_at).getTime() : 0;
-                return bTime - aTime;
-            });
+                // グローバルに読み込んである過去全件ログをループ処理
+                allTimeHistoryLogs.forEach(log => {
+                    if (log.type === "払い出し") {
+                        const shizaiId = log.shizai_id;
+                        const qty = parseInt(log.quantity || 0, 10);
+                        payoutCounts[shizaiId] = (payoutCounts[shizaiId] || 0) + qty;
+                    }
+                });
+            
+                stocksArray.sort((a, b) => {
+                    const countA = payoutCounts[a.id] || 0;
+                    const countB = payoutCounts[b.id] || 0;
+                    
+                    // 払い出し数が多い順（降順）
+                    if (countB !== countA) {
+                        return countB - countA;
+                    }
+                    // 払い出し数が同じ場合は名称50音順
+                    return a.shizai_name.localeCompare(b.shizai_name, 'ja');
+                });
+            } else {
+                // デフォルト（ID順・更新順）
+                stocksArray.sort((a, b) => a.id - b.id);
+            }
 
             const totalItems = filteredItems.length;
             const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE) || 1;
