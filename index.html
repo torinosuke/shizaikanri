@@ -1994,7 +1994,7 @@
             }
         }
         
-        // 10件ずつのページネーション付きで払い出しランキングを描画する関数（バーの範囲限定版）
+        // 10件ずつのページネーション付きで払い出しランキングを描画する関数（バーを資材名の背景に限定版）
         function renderPayoutRanking() {
             const el = document.getElementById('payout-ranking');
             const paginationEl = document.getElementById('ranking-pagination');
@@ -2028,10 +2028,10 @@
                 const shizaiPart = parts[1] ? parts[1] : name;
                 
                 const rank = startIndex + index + 1;
-                let rankBadge = `<span class="inline-block w-4 h-4 text-center rounded bg-gray-200 text-gray-600 font-bold text-[10px] mr-1.5 flex-shrink-0 z-10">${rank}</span>`;
-                if (rank === 1) rankBadge = `<span class="inline-block w-4 h-4 text-center rounded bg-amber-400 text-white font-bold text-[10px] mr-1.5 flex-shrink-0 z-10">🥇</span>`;
-                if (rank === 2) rankBadge = `<span class="inline-block w-4 h-4 text-center rounded bg-slate-300 text-white font-bold text-[10px] mr-1.5 flex-shrink-0 z-10">🥈</span>`;
-                if (rank === 3) rankBadge = `<span class="inline-block w-4 h-4 text-center rounded bg-amber-600 text-white font-bold text-[10px] mr-1.5 flex-shrink-0 z-10">🥉</span>`;
+                let rankBadge = `<span class="inline-block w-4 h-4 text-center rounded bg-gray-200 text-gray-600 font-bold text-[10px] mr-1.5 flex-shrink-0">${rank}</span>`;
+                if (rank === 1) rankBadge = `<span class="inline-block w-4 h-4 text-center rounded bg-amber-400 text-white font-bold text-[10px] mr-1.5 flex-shrink-0">🥇</span>`;
+                if (rank === 2) rankBadge = `<span class="inline-block w-4 h-4 text-center rounded bg-slate-300 text-white font-bold text-[10px] mr-1.5 flex-shrink-0">🥈</span>`;
+                if (rank === 3) rankBadge = `<span class="inline-block w-4 h-4 text-center rounded bg-amber-600 text-white font-bold text-[10px] mr-1.5 flex-shrink-0">🥉</span>`;
         
                 // 1位に対する数量割合（%）を計算
                 const barWidth = Math.min(100, Math.round((qty / maxQty) * 100));
@@ -2039,14 +2039,18 @@
                 return `
                     <li class="text-xs text-gray-700 flex items-center py-1 border-b border-gray-50/60 leading-tight justify-between gap-2 min-h-[32px]">
                         
-                        <div class="flex-1 min-w-0 relative h-full flex flex-col justify-center py-0.5">
-                            <div class="absolute left-0 top-0 bottom-0 rounded-r transition-all duration-500 ease-out" 
-                                 style="width: ${barWidth}%; background-color: rgba(219, 234, 254, 0.7); z-index: 0;"></div>
+                        <div class="flex-1 min-w-0 flex flex-col justify-center py-0.5">
+                            <div class="text-[9px] text-gray-400 font-normal mb-0.5 ml-5">${drugPart}</div>
                             
-                            <div class="text-[9px] text-gray-400 font-normal mb-0 ml-5 z-10">${drugPart}</div>
-                            <div class="font-medium flex items-center z-10">
+                            <div class="font-medium flex items-center">
                                 ${rankBadge}
-                                <span class="truncate">${shizaiPart}</span>
+                                
+                                <span class="relative inline-block truncate flex-1 min-w-0 pr-2 py-0.5">
+                                    <span class="absolute left-0 top-0 bottom-0 rounded-r transition-all duration-500 ease-out" 
+                                          style="width: ${barWidth}%; background-color: rgba(219, 234, 254, 0.7); z-index: 0;"></span>
+                                    
+                                    <span class="relative z-10 truncate block">${shizaiPart}</span>
+                                </span>
                             </div>
                         </div>
         
