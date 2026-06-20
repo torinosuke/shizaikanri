@@ -1994,7 +1994,7 @@
             }
         }
         
-        // 10件ずつのページネーション付きで払い出しランキングを描画する関数（右詰め・上下幅スリム・高さ固定版）
+        // 10件ずつのページネーション付きで払い出しランキングを描画する関数（横棒グラフ・右詰め・高さ固定版）
         function renderPayoutRanking() {
             const el = document.getElementById('payout-ranking');
             const paginationEl = document.getElementById('ranking-pagination');
@@ -2018,6 +2018,10 @@
             const endIndex = startIndex + itemsPerPageRanking;
             const pageItems = cachedSortedPayouts.slice(startIndex, endIndex);
         
+            // 🌟 グラフの基準となる「全体（または1位）の最大払い出し数」を取得
+            // ページをめくってもグラフのスケールがブレないよう、常に全体の1位（cachedSortedPayouts[0]）を最大値（100%）とします
+            const maxQty = cachedSortedPayouts[0] ? cachedSortedPayouts[0][1] : 1;
+        
             // 1. 実データのHTMLを生成
             let htmlArray = pageItems.map(([name, qty], index) => {
                 const parts = name.split(' - ');
@@ -2025,34 +2029,38 @@
                 const shizaiPart = parts[1] ? parts[1] : name;
                 
                 const rank = startIndex + index + 1;
-                let rankBadge = `<span class="inline-block w-4 h-4 text-center rounded bg-gray-200 text-gray-600 font-bold text-[10px] mr-1.5 flex-shrink-0">${rank}</span>`;
-                if (rank === 1) rankBadge = `<span class="inline-block w-4 h-4 text-center rounded bg-amber-400 text-white font-bold text-[10px] mr-1.5 flex-shrink-0">🥇</span>`;
-                if (rank === 2) rankBadge = `<span class="inline-block w-4 h-4 text-center rounded bg-slate-300 text-white font-bold text-[10px] mr-1.5 flex-shrink-0">🥈</span>`;
-                if (rank === 3) rankBadge = `<span class="inline-block w-4 h-4 text-center rounded bg-amber-600 text-white font-bold text-[10px] mr-1.5 flex-shrink-0">🥉</span>`;
+                let rankBadge = `<span class="inline-block w-4 h-4 text-center rounded bg-gray-200 text-gray-600 font-bold text-[10px] mr-1.5 flex-shrink-0 z-10">${rank}</span>`;
+                if (rank === 1) rankBadge = `<span class="inline-block w-4 h-4 text-center rounded bg-amber-400 text-white font-bold text-[10px] mr-1.5 flex-shrink-0 z-10">🥇</span>`;
+                if (rank === 2) rankBadge = `<span class="inline-block w-4 h-4 text-center rounded bg-slate-300 text-white font-bold text-[10px] mr-1.5 flex-shrink-0 z-10">🥈</span>`;
+                if (rank === 3) rankBadge = `<span class="inline-block w-4 h-4 text-center rounded bg-amber-600 text-white font-bold text-[10px] mr-1.5 flex-shrink-0 z-10">🥉</span>`;
         
-                // 💡 flex と justify-between を組み合わせ、個数部分を text-right（右詰め）に固定しました
+                // 🌟 1位に対する数量割合（%）を計算
+                const barWidth = Math.min(100, Math.round((qty / maxQty) * 100));
+        
                 return `
-                    <li class="text-xs text-gray-700 flex items-center py-0.5 border-b border-gray-50/60 leading-tight justify-between gap-2">
-                        <div class="flex-1 min-w-0">
+                    <li class="text-xs text-gray-700 flex items-center py-1 border-b border-gray-50/60 leading-tight justify-between gap-2 relative min-h-[32px]">
+                        <div class="absolute left-0 top-0.5 bottom-0.5 bg-blue-50/70 rounded-r transition-all duration-500 ease-out" style="width: ${barWidth}%;"></div>
+                        
+                        <div class="flex-1 min-w-0 z-10">
                             <div class="text-[9px] text-gray-400 font-normal mb-0 ml-5">${drugPart}</div>
                             <div class="font-medium flex items-center">
                                 ${rankBadge}
                                 <span class="truncate">${shizaiPart}</span>
                             </div>
                         </div>
-                        <div class="font-bold text-blue-600 whitespace-nowrap flex-shrink-0 w-14 text-right">
+                        <div class="font-bold text-blue-600 whitespace-nowrap flex-shrink-0 w-14 text-right z-10">
                             ${qty}個
                         </div>
                     </li>
                 `;
             });
         
-            // 2. 【高さ固定ロジック】空行で埋める（右詰めの個数スペースも確保）
+            // 2. 【高さ固定ロジック】空行で埋める（グラフ用スタイルと高さを一致させるため min-h-[32px] を適用）
             if (totalPages > 1 && htmlArray.length < itemsPerPageRanking) {
                 const neededEmptyRows = itemsPerPageRanking - htmlArray.length;
                 for (let i = 0; i < neededEmptyRows; i++) {
                     htmlArray.push(`
-                        <li class="text-xs flex items-center py-0.5 border-b border-transparent leading-tight justify-between gap-2 invisible select-none" aria-hidden="true">
+                        <li class="text-xs flex items-center py-1 border-b border-transparent leading-tight justify-between gap-2 invisible select-none min-h-[32px]" aria-hidden="true">
                             <div class="flex-1 min-w-0">
                                 <div class="text-[9px] mb-0">&nbsp;</div>
                                 <div class="flex items-center">
@@ -2072,7 +2080,7 @@
             // ランキング用ページネーションUI（ボタン）の生成
             if (paginationEl) {
                 if (totalPages > 1) {
-                    let paginationHtml = `<div class="flex justify-center items-center gap-1 mt-1.5 select-none">`;
+                    let paginationHtml = `<div class="flex justify-center items-center gap-1 mt-2 select-none">`;
                     
                     // ＜ ボタン
                     paginationHtml += `
