@@ -150,7 +150,7 @@
                 </div>
 
                 <div class="pt-1 flex items-center">
-                    <label class="inline-flex items-center cursor-pointer select-none text-xxs font-bold text-red-600 bg-red-50 hover:bg-red-100/70 px-2 py-1 rounded-md border border-red-200/60 transition active:opacity-75">
+                    <label class="inline-flex items-center cursor-pointer select-none text-xs font-bold text-red-600 bg-red-50 hover:bg-red-100/70 px-2 py-1 rounded-md border border-red-200/60 transition active:opacity-75">
                         <input type="checkbox" id="prioritize-status-checkbox" onchange="toggleStatusPriority()" class="rounded border-red-300 text-red-600 focus:ring-red-400 mr-1.5 w-3.5 h-3.5">
                         ⚠️ 要発注・取り寄せ中を最優先表示
                     </label>
@@ -1123,41 +1123,51 @@
 
             // 💡 ソート処理の適用部分を以下のように修正・拡張します
             const sortMethod = document.getElementById("sort-selector")?.value || "default";
-            
-            if (sortMethod === "shizai_asc") {
-                filteredItems.sort((a, b) => a.shizai_name.localeCompare(b.shizai_name, 'ja'));
-            } else if (sortMethod === "stock_asc") {
-                filteredItems.sort((a, b) => a.current_stock - b.current_stock);
-            } else if (sortMethod === "stock_desc") {
-                filteredItems.sort((a, b) => b.current_stock - a.current_stock);
-            } else if (sortMethod === "payout_count_desc") {
-                // 🌟 新規追加：過去全件の「払い出し数」を集計してソート
-                const payoutCounts = {};
-                
-                // グローバルに読み込んである過去全件ログをループ処理
-                allTimeHistoryLogs.forEach(log => {
-                    if (log.type === "払い出し") {
-                        const shizaiId = log.shizai_id;
-                        const qty = parseInt(log.quantity || 0, 10);
-                        payoutCounts[shizaiId] = (payoutCounts[shizaiId] || 0) + qty;
-                    }
-                });
-            
-                filteredItems.sort((a, b) => {
+
+            // 📌 【追加】チェックボックスの状態を取得（未設置の場合はデフォルト最優先=true）
+            const statusCheckbox = document.getElementById("prioritize-status-checkbox");
+            const isPriorityActive = statusCheckbox ? statusCheckbox.checked : true;
+
+            // 共通のソート処理（まず最優先チェックの判定を行い、その後各ソートを適用）
+            filteredItems.sort((a, b) => {
+                if (isPriorityActive) {
+                    // 「要発注（現在在庫 < 最低在庫）」または「取り寄せ中（item.is_ordering が true）」であるか判定
+                    const aUrgent = (a.is_ordering || a.current_stock < a.min_stock);
+                    const bUrgent = (b.is_ordering || b.current_stock < b.min_stock);
+
+                    if (aUrgent && !bUrgent) return -1; // a(緊急)を上にする
+                    if (!aUrgent && bUrgent) return 1;  // b(緊急)を上にする
+                    // 両方とも緊急、または両方とも通常の場合は、下の通常のソート条件に進む
+                }
+
+                // 2. 各ソート条件の適用
+                if (sortMethod === "shizai_asc") {
+                    return a.shizai_name.localeCompare(b.shizai_name, 'ja');
+                } else if (sortMethod === "stock_asc") {
+                    return a.current_stock - b.current_stock;
+                } else if (sortMethod === "stock_desc") {
+                    return b.current_stock - a.current_stock;
+                } else if (sortMethod === "payout_count_desc") {
+                    // 払い出し実績順の処理（グローバルに読み込んである過去全件ログをループ処理）
+                    const payoutCounts = {};
+                    allTimeHistoryLogs.forEach(log => {
+                        if (log.type === "払い出し") {
+                            const shizaiId = log.shizai_id;
+                            const qty = parseInt(log.quantity || 0, 10);
+                            payoutCounts[shizaiId] = (payoutCounts[shizaiId] || 0) + qty;
+                        }
+                    });
                     const countA = payoutCounts[a.id] || 0;
                     const countB = payoutCounts[b.id] || 0;
-                    
                     // 払い出し数が多い順（降順）
-                    if (countB !== countA) {
-                        return countB - countA;
-                    }
+                    if (countB !== countA) return countB - countA;
                     // 払い出し数が同じ場合は名称50音順
                     return a.shizai_name.localeCompare(b.shizai_name, 'ja');
-                });
-            } else {
-                // デフォルト（ID順・更新順）
-                filteredItems.sort((a, b) => a.id - b.id);
-            }
+                } else {
+                    // デフォルト（ID順・更新順）
+                    return a.id - b.id;
+                }
+            });
 
             const totalItems = filteredItems.length;
             const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE) || 1;
@@ -2128,6 +2138,33 @@
         function changeRankingPage(newPage) {
             currentRankingPage = newPage;
             renderPayoutRanking();
+        }
+
+        // ページ読み込み時に端末の記憶(localStorage)から状態を復元する
+        document.addEventListener("DOMContentLoaded", () => {
+            const checkbox = document.getElementById("prioritize-status-checkbox");
+            if (checkbox) {
+                // 端末に記憶された設定を読み込む（デフォルトは true: 最優先する）
+                const savedSetting = localStorage.getItem("prioritize_status_active");
+                checkbox.checked = savedSetting === null ? true : savedSetting === "true";
+            }
+        });
+        
+        // チェックボックスがクリックされたときの処理
+        function toggleStatusPriority() {
+            const checkbox = document.getElementById("prioritize-status-checkbox");
+            if (checkbox) {
+                // 端末(localStorage)に現在のチェック状態を記憶させる
+                localStorage.setItem("prioritize_status_active", checkbox.checked);
+                // リストを現在のソート条件で再描画（既存の関数を呼び出す）
+                if (typeof filterStocks === "function") {
+                    filterStocks();
+                } else if (typeof renderStockList === "function") {
+                    // filterStocksが無い、またはrender側で処理している場合はこちら
+                    // ※お使いの関数名に合わせて調整してください。通常は filterStocks() かと思います。
+                    filterStocks();
+                }
+            }
         }
     </script>
     
