@@ -1829,7 +1829,7 @@
             renderPayoutRanking();
         }
 
-        // 10件ずつのページネーション付きで履歴タイムラインを描画する関数（高さ固定機能付き）
+        // 10件ずつのページネーション付きで履歴タイムラインを描画する関数（上下幅スリム・高さ固定版）
         function renderHistoryTimeline() {
             const timelineEl = document.getElementById('logs-timeline');
             if (!timelineEl) return;
@@ -1851,38 +1851,38 @@
             const endIndex = startIndex + itemsPerPageHistory;
             const pageLogs = cachedHistoryLogs.slice(startIndex, endIndex);
         
-            // 1. 実データのHTML配列を生成
+            // 1. 実データのHTML配列を生成（上下のパディングを py-1 に狭め、leading-tight を適用）
             let htmlArray = pageLogs.map(log => {
                 const date = new Date(log.created_at).toLocaleString('ja-JP', {month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit'});
                 const isPayout = log.type === '払い出し';
                 const badgeColor = isPayout ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-600';
                 return `
-                    <div class="flex items-center justify-between p-2.5 border-b border-gray-50 text-xs">
+                    <div class="flex items-center justify-between py-1 px-2.5 border-b border-gray-50 text-xs leading-tight">
                         <div class="flex-1 min-w-0 pr-2">
-                            <div class="text-[10px] text-gray-400">${date} [${log.drug_name}]</div>
+                            <div class="text-[9px] text-gray-400 mb-0">${date} [${log.drug_name}]</div>
                             <div class="font-medium text-gray-700 truncate">${log.shizai_name}</div>
                         </div>
                         <div class="flex items-center gap-2">
-                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${badgeColor}">${log.type}</span>
+                            <span class="px-1.5 py-0.5 rounded-full text-[9px] font-bold ${badgeColor}">${log.type}</span>
                             <span class="font-bold text-gray-800 w-8 text-right">${log.quantity}個</span>
                         </div>
                     </div>
                 `;
             });
         
-            // 🌟 2. 【履歴側の高さ固定ロジック】2ページ以上存在し、現在の表示が10件未満の場合に空行で埋める
+            // 2. 【履歴側の高さ固定ロジック】2ページ以上存在し、現在の表示が10件未満の場合にスリムな空行で埋める
             if (totalPages > 1 && htmlArray.length < itemsPerPageHistory) {
                 const neededEmptyRows = itemsPerPageHistory - htmlArray.length;
                 for (let i = 0; i < neededEmptyRows; i++) {
-                    // 履歴の1行分と完全に同じ高さ・構造を持つ「透明なダミー行」を追加して枠を維持
+                    // スリム化した実データと完全に同じ高さ・構造を持つ「透明なダミー行」
                     htmlArray.push(`
-                        <div class="flex items-center justify-between p-2.5 border-b border-transparent text-xs invisible select-none" aria-hidden="true">
+                        <div class="flex items-center justify-between py-1 px-2.5 border-b border-transparent text-xs leading-tight invisible select-none" aria-hidden="true">
                             <div class="flex-1 min-w-0 pr-2">
-                                <div class="text-[10px]">&nbsp;</div>
+                                <div class="text-[9px] mb-0">&nbsp;</div>
                                 <div class="font-medium">&nbsp;</div>
                             </div>
                             <div class="flex items-center gap-2">
-                                <span class="px-2 py-0.5 text-[10px]">&nbsp;</span>
+                                <span class="px-1.5 py-0.5 text-[9px]">&nbsp;</span>
                                 <span class="w-8 text-right">&nbsp;</span>
                             </div>
                         </div>
@@ -1895,7 +1895,7 @@
         
             // ページネーション用のナビゲーションボタンを生成
             if (totalPages > 1) {
-                let paginationHtml = `<div class="flex justify-center items-center gap-1 mt-4 pt-2 pb-2 select-none">`;
+                let paginationHtml = `<div class="flex justify-center items-center gap-1 mt-3 pt-1 pb-1 select-none">`;
                 
                 // ＜ ボタン
                 paginationHtml += `
