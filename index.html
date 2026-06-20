@@ -1921,7 +1921,7 @@
             document.getElementById('logs-timeline')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }
 
-        // 10件ずつのページネーション付きで払い出しランキングを描画する関数（上下幅スリム版）
+        // 10件ずつのページネーション付きで払い出しランキングを描画する関数（高さ固定機能付き）
         function renderPayoutRanking() {
             const el = document.getElementById('payout-ranking');
             const paginationEl = document.getElementById('ranking-pagination');
@@ -1945,8 +1945,8 @@
             const endIndex = startIndex + itemsPerPageRanking;
             const pageItems = cachedSortedPayouts.slice(startIndex, endIndex);
         
-            // ランキングのHTML生成（上下の余白をさらに狭く調整）
-            el.innerHTML = pageItems.map(([name, qty], index) => {
+            // 1. 実データのHTMLを生成
+            let htmlArray = pageItems.map(([name, qty], index) => {
                 const parts = name.split(' - ');
                 const drugPart = parts[0] ? parts[0] : '';
                 const shizaiPart = parts[1] ? parts[1] : name;
@@ -1957,7 +1957,6 @@
                 if (rank === 2) rankBadge = `<span class="inline-block w-4 h-4 text-center rounded bg-slate-300 text-white font-bold text-[10px] mr-1.5">🥈</span>`;
                 if (rank === 3) rankBadge = `<span class="inline-block w-4 h-4 text-center rounded bg-amber-600 text-white font-bold text-[10px] mr-1.5">🥉</span>`;
         
-                // 💡 py-0.5 に変更して上下のパディングを極力狭め、leading-tight でテキストの行間も詰めました
                 return `
                     <li class="text-xs text-gray-700 flex items-start py-0.5 border-b border-gray-50/60 leading-tight">
                         <div class="flex-1 min-w-0">
@@ -1970,9 +1969,31 @@
                         </div>
                     </li>
                 `;
-            }).join('');
+            });
         
-            // ランキング用ページネーションUI（ボタン）の生成（マージンを mt-1 に縮小）
+            // 🌟 2. 【高さ固定ロジック】2ページ以上存在し、かつ現在の表示が10件未満の場合、空行で埋める
+            if (totalPages > 1 && htmlArray.length < itemsPerPageRanking) {
+                const neededEmptyRows = itemsPerPageRanking - htmlArray.length;
+                for (let i = 0; i < neededEmptyRows; i++) {
+                    // 実データと全く同じ高さ・構造を持つ「透明なダミー行」を追加して枠を維持
+                    htmlArray.push(`
+                        <li class="text-xs flex items-start py-0.5 border-b border-transparent leading-tight invisible select-none" aria-hidden="true">
+                            <div class="flex-1 min-w-0">
+                                <div class="text-[9px] mb-0">&nbsp;</div>
+                                <div class="flex items-center">
+                                    <span class="inline-block w-4 h-4 mr-1.5">&nbsp;</span>
+                                    <span>&nbsp;</span>
+                                </div>
+                            </div>
+                        </li>
+                    `);
+                }
+            }
+        
+            // 結合して画面に反映
+            el.innerHTML = htmlArray.join('');
+        
+            // ランキング用ページネーションUI（ボタン）の生成
             if (paginationEl) {
                 if (totalPages > 1) {
                     let paginationHtml = `<div class="flex justify-center items-center gap-1 mt-1.5 select-none">`;
