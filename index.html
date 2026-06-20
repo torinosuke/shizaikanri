@@ -1994,7 +1994,7 @@
             }
         }
         
-        // 10件ずつのページネーション付きで払い出しランキングを描画する関数（バーを資材名の背景に限定版）
+        // 10件ずつのページネーション付きで払い出しランキングを描画する関数（超スリム・高さ固定版）
         function renderPayoutRanking() {
             const el = document.getElementById('payout-ranking');
             const paginationEl = document.getElementById('ranking-pagination');
@@ -2028,21 +2028,22 @@
                 const shizaiPart = parts[1] ? parts[1] : name;
                 
                 const rank = startIndex + index + 1;
-                let rankBadge = `<span class="inline-block w-4 h-4 text-center rounded bg-gray-200 text-gray-600 font-bold text-[10px] mr-1.5 flex-shrink-0">${rank}</span>`;
-                if (rank === 1) rankBadge = `<span class="inline-block w-4 h-4 text-center rounded bg-amber-400 text-white font-bold text-[10px] mr-1.5 flex-shrink-0">🥇</span>`;
-                if (rank === 2) rankBadge = `<span class="inline-block w-4 h-4 text-center rounded bg-slate-300 text-white font-bold text-[10px] mr-1.5 flex-shrink-0">🥈</span>`;
-                if (rank === 3) rankBadge = `<span class="inline-block w-4 h-4 text-center rounded bg-amber-600 text-white font-bold text-[10px] mr-1.5 flex-shrink-0">🥉</span>`;
+                let rankBadge = `<span class="inline-block w-4 h-4 text-center rounded bg-gray-200 text-gray-600 font-bold text-[9px] mr-1 flex-shrink-0">${rank}</span>`;
+                if (rank === 1) rankBadge = `<span class="inline-block w-4 h-4 text-center rounded bg-amber-400 text-white font-bold text-[9px] mr-1 flex-shrink-0">🥇</span>`;
+                if (rank === 2) rankBadge = `<span class="inline-block w-4 h-4 text-center rounded bg-slate-300 text-white font-bold text-[9px] mr-1 flex-shrink-0">🥈</span>`;
+                if (rank === 3) rankBadge = `<span class="inline-block w-4 h-4 text-center rounded bg-amber-600 text-white font-bold text-[9px] mr-1 flex-shrink-0">🥉</span>`;
         
                 // 1位に対する数量割合（%）を計算
                 const barWidth = Math.min(100, Math.round((qty / maxQty) * 100));
         
+                // 💡 1行の最小高さを min-h-[22px] にし、py-0.5 で極限まで隙間をなくしました
                 return `
-                    <li class="text-xs text-gray-700 flex items-center py-1 border-b border-gray-50/60 leading-tight justify-between gap-2 min-h-[32px]">
+                    <li class="text-[11px] text-gray-700 flex items-center py-0.5 border-b border-gray-50/60 leading-none justify-between gap-1 min-h-[22px]">
                         
-                        <div class="flex-1 min-w-0 flex flex-col justify-center py-0.5">
-                            <div class="text-[9px] text-gray-400 font-normal mb-0.5 ml-5">${drugPart}</div>
+                        <div class="flex-1 min-w-0 flex flex-col justify-center">
+                            ${drugPart ? `<div class="text-[8px] text-gray-400 font-normal mb-0 ml-5 leading-none">${drugPart}</div>` : ''}
                             
-                            <div class="font-medium flex items-center">
+                            <div class="font-medium flex items-center leading-none">
                                 ${rankBadge}
                                 
                                 <span class="relative inline-block truncate flex-1 min-w-0 pr-2 py-0.5">
@@ -2054,27 +2055,26 @@
                             </div>
                         </div>
         
-                        <div class="font-bold text-blue-600 whitespace-nowrap flex-shrink-0 w-14 text-right">
+                        <div class="font-bold text-blue-600 whitespace-nowrap flex-shrink-0 w-12 text-right z-10">
                             ${qty}個
                         </div>
                     </li>
                 `;
             });
         
-            // 2. 【高さ固定ロジック】空行で埋める
+            // 2. 【高さ固定ロジック】空行で埋める（1行あたり最小22pxに合わせたダミー行）
             if (totalPages > 1 && htmlArray.length < itemsPerPageRanking) {
                 const neededEmptyRows = itemsPerPageRanking - htmlArray.length;
                 for (let i = 0; i < neededEmptyRows; i++) {
                     htmlArray.push(`
-                        <li class="text-xs flex items-center py-1 border-b border-transparent leading-tight justify-between gap-2 invisible select-none min-h-[32px]" aria-hidden="true">
+                        <li class="text-[11px] flex items-center py-0.5 border-b border-transparent leading-none justify-between gap-1 invisible select-none min-h-[22px]" aria-hidden="true">
                             <div class="flex-1 min-w-0">
-                                <div class="text-[9px] mb-0">&nbsp;</div>
                                 <div class="flex items-center">
-                                    <span class="inline-block w-4 h-4 mr-1.5 flex-shrink-0">&nbsp;</span>
+                                    <span class="inline-block w-4 h-4 mr-1 flex-shrink-0">&nbsp;</span>
                                     <span>&nbsp;</span>
                                 </div>
                             </div>
-                            <div class="w-14 text-right flex-shrink-0">&nbsp;</div>
+                            <div class="w-12 text-right flex-shrink-0">&nbsp;</div>
                         </li>
                     `);
                 }
@@ -2086,7 +2086,7 @@
             // ランキング用ページネーションUI（ボタン）の生成
             if (paginationEl) {
                 if (totalPages > 1) {
-                    let paginationHtml = `<div class="flex justify-center items-center gap-1 mt-2 select-none">`;
+                    let paginationHtml = `<div class="flex justify-center items-center gap-1 mt-1.5 select-none">`;
                     
                     // ＜ ボタン
                     paginationHtml += `
@@ -2126,7 +2126,6 @@
                 }
             }
         }
-        
         // 🌟 新しく追加：ランキングのページを切り替える関数
         function changeRankingPage(newPage) {
             currentRankingPage = newPage;
