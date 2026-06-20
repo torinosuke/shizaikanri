@@ -118,7 +118,7 @@
 
             <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 mb-4 space-y-3">
                 <div>
-                    <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">薬品絞り込み</label>
+                    <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">薬品絞り込み</label>
                     <button id="modal-filter-trigger-btn" onclick="openDrugFilterModal()" class="w-full text-left p-2.5 bg-gray-50 border border-gray-300 rounded-lg text-xs font-bold text-gray-700 flex items-center justify-between shadow-sm active:bg-gray-100 transition truncate">
                         <span id="modal-filter-btn-text" class="truncate">🔍 すべての薬品</span>
                         <span class="text-[9px] text-gray-400 ml-1 shrink-0">▼</span>
@@ -127,7 +127,7 @@
             
                 <div class="flex items-end space-x-2">
                     <div class="flex-1 min-w-0">
-                        <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">キーワード検索（資材名・薬品名）</label>
+                        <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">キーワード検索</label>
                         <div class="relative">
                             <input type="text" id="search-input" oninput="handleSearchInput()" placeholder="検索したいキーワードを入力..." class="w-full p-2.5 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 outline-none text-xs font-medium text-gray-700">
                             <button id="search-clear-btn" onclick="clearSearchInput()" class="absolute inset-y-0 right-0 px-3 flex items-center text-gray-400 hover:text-gray-600 hidden">✕</button>
@@ -135,7 +135,7 @@
                     </div>
             
                     <div class="w-[42%] shrink-0">
-                        <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">並び替え</label>
+                        <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">並び替え</label>
                         <div class="relative">
                             <select id="sort-selector" onchange="handleSortChanged()" class="w-full p-2.5 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 outline-none text-xs font-bold text-gray-700 appearance-none shadow-sm">
                                 <option value="default">標準（更新順）</option>
