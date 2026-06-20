@@ -197,19 +197,11 @@
                     この期間で集計・更新
                 </button>
         
-                <div class="grid grid-cols-2 gap-3 border-t border-gray-100 pt-3">
-                    <div>
-                        <h3 class="text-xs font-bold text-red-600 mb-2">🔥 払い出し上位</h3>
-                        <ol id="payout-ranking" class="text-gray-600 list-decimal pl-3 space-y-2">
-                            <li class="text-gray-400">データなし</li>
-                        </ol>
-                    </div>
-                    <div>
-                        <h3 class="text-xs font-bold text-green-600 mb-2">📦 入庫上位</h3>
-                        <ol id="arrival-ranking" class="text-gray-600 list-decimal pl-3 space-y-2">
-                            <li class="text-gray-400">データなし</li>
-                        </ol>
-                    </div>
+                <div class="bg-white p-4 rounded-2xl border border-gray-200 shadow-sm mb-4">
+                    <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">🔥 払い出し数上位（指定期間内）</h3>
+                    <ul id="payout-ranking" class="space-y-3 pl-0 list-none">
+                        </ul>
+                    <div id="ranking-pagination" class="mt-3"></div>
                 </div>
             </div>
         
@@ -239,6 +231,8 @@
         let currentPage = 1;
         let cachedHistoryLogs = [];       // 🌟 追加：取得した履歴データを保持する変数
         let currentHistoryPage = 1;       // 🌟 追加：履歴・集計画面用
+        let currentRankingPage = 1;       // 🌟 追加：払い出しランキング用の現在ページ
+        let cachedSortedPayouts = [];     // 🌟 追加：集計済みの払い出しランキングデータを保持する配列
         const ITEMS_PER_PAGE = 10;
 
         let editInitialState = null;
@@ -1810,56 +1804,29 @@
                 return;
             }
         
-            // 🌟 取得したデータをグローバル変数に保存し、検索時はページを1に戻す
+            // 取得したデータをグローバル変数に保存し、ページをリセット
             cachedHistoryLogs = logs || [];
             currentHistoryPage = 1;
+            currentRankingPage = 1; // 🌟 ランキングページもリセット
         
-            // 🌟 新設した描画関数を呼び出す（ページネーション付き）
+            // 履歴タイムラインを描画（10件区切り）
             renderHistoryTimeline();
         
-            // 3. ランキング集計ロジック (品目ごとに数量を合計)
+            // 3. 払い出しランキング集計ロジック (入庫は破棄し、払い出しのみ集計)
             const payoutMap = {};
-            const arrivalMap = {};
         
             cachedHistoryLogs.forEach(log => {
                 const key = `${log.drug_name} - ${log.shizai_name}`;
                 if (log.type === '払い出し') {
                     payoutMap[key] = (payoutMap[key] || 0) + log.quantity;
-                } else if (log.type === '入庫') {
-                    arrivalMap[key] = (arrivalMap[key] || 0) + log.quantity;
                 }
             });
         
-            // オブジェクトを配列に変換して数量順にソート (上位5件)
-            const sortedPayouts = Object.entries(payoutMap).sort((a, b) => b[1] - a[1]).slice(0, 5);
-            const sortedArrivals = Object.entries(arrivalMap).sort((a, b) => b[1] - a[1]).slice(0, 5);
+            // オブジェクトを配列に変換して数量順にソート（全件保持させて後で切り出す）
+            cachedSortedPayouts = Object.entries(payoutMap).sort((a, b) => b[1] - a[1]);
         
-            // 4. ランキング表示の反映
-            const renderRanking = (elementId, data) => {
-                const el = document.getElementById(elementId);
-                if (data.length === 0) {
-                    el.innerHTML = `<li class="text-gray-400 list-none text-xs">データなし</li>`;
-                } else {
-                    el.innerHTML = data.map(([name, qty]) => {
-                        const parts = name.split(' - ');
-                        const drugPart = parts[0] ? parts[0] : '';
-                        const shizaiPart = parts[1] ? parts[1] : name;
-                        
-                        return `
-                            <li class="text-xs text-gray-700">
-                                <div class="text-[10px] text-gray-400 font-normal leading-none mb-0.5">${drugPart}</div>
-                                <div class="font-medium">
-                                    ${shizaiPart}
-                                    <span class="font-bold text-gray-900 whitespace-nowrap ml-0.5">(${qty}個)</span>
-                                </div>
-                            </li>
-                        `;
-                    }).join('');
-                }
-            };
-        
-            renderRanking('payout-ranking', sortedPayouts);
-            renderRanking('arrival-ranking', sortedArrivals);
+            // 4. 🌟 新設したランキング描画関数を呼び出す
+            renderPayoutRanking();
         }
 
         // 🌟 新しく追加：10件ずつのページネーション付きで履歴タイムラインを描画する関数
@@ -1952,6 +1919,107 @@
             
             // スクロール位置を履歴エリアの少し上にスムーズに戻す
             document.getElementById('logs-timeline')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        // 🌟 新しく追加：10件ずつのページネーション付きで払い出しランキングを描画する関数
+        function renderPayoutRanking() {
+            const el = document.getElementById('payout-ranking');
+            const paginationEl = document.getElementById('ranking-pagination');
+            if (!el) return;
+        
+            if (cachedSortedPayouts.length === 0) {
+                el.innerHTML = `<li class="text-gray-400 list-none text-xs py-2">データなし</li>`;
+                if (paginationEl) paginationEl.innerHTML = '';
+                return;
+            }
+        
+            // 10件ごとのページ計算
+            const itemsPerPageRanking = 10;
+            const totalItems = cachedSortedPayouts.length;
+            const totalPages = Math.ceil(totalItems / itemsPerPageRanking) || 1;
+        
+            if (currentRankingPage > totalPages) currentRankingPage = totalPages;
+            if (currentRankingPage < 1) currentRankingPage = 1;
+        
+            const startIndex = (currentRankingPage - 1) * itemsPerPageRanking;
+            const endIndex = startIndex + itemsPerPageRanking;
+            const pageItems = cachedSortedPayouts.slice(startIndex, endIndex);
+        
+            // ランキングのHTML生成
+            el.innerHTML = pageItems.map(([name, qty], index) => {
+                const parts = name.split(' - ');
+                const drugPart = parts[0] ? parts[0] : '';
+                const shizaiPart = parts[1] ? parts[1] : name;
+                
+                // ページをまたいでも正しい順位（1位、2位…）を表示するための計算
+                const rank = startIndex + index + 1;
+                let rankBadge = `<span class="inline-block w-4 h-4 text-center rounded bg-gray-200 text-gray-600 font-bold text-[10px] mr-1.5">${rank}</span>`;
+                if (rank === 1) rankBadge = `<span class="inline-block w-4 h-4 text-center rounded bg-amber-400 text-white font-bold text-[10px] mr-1.5">🥇</span>`;
+                if (rank === 2) rankBadge = `<span class="inline-block w-4 h-4 text-center rounded bg-slate-300 text-white font-bold text-[10px] mr-1.5">🥈</span>`;
+                if (rank === 3) rankBadge = `<span class="inline-block w-4 h-4 text-center rounded bg-amber-600 text-white font-bold text-[10px] mr-1.5">🥉</span>`;
+        
+                return `
+                    <li class="text-xs text-gray-700 flex items-start p-1.5 border-b border-gray-50">
+                        <div class="flex-1 min-w-0">
+                            <div class="text-[10px] text-gray-400 font-normal leading-none mb-0.5 ml-5">${drugPart}</div>
+                            <div class="font-medium flex items-center">
+                                ${rankBadge}
+                                <span class="truncate">${shizaiPart}</span>
+                                <span class="font-bold text-blue-600 whitespace-nowrap ml-2">(${qty}個)</span>
+                            </div>
+                        </div>
+                    </li>
+                `;
+            }).join('');
+        
+            // ランキング用ページネーションUI（ボタン）の生成
+            if (paginationEl) {
+                if (totalPages > 1) {
+                    let paginationHtml = `<div class="flex justify-center items-center gap-1 mt-2 select-none">`;
+                    
+                    // ＜ ボタン
+                    paginationHtml += `
+                        <button onclick="changeRankingPage(${currentRankingPage - 1})" ${currentRankingPage === 1 ? 'disabled' : ''} class="w-6 h-6 flex items-center justify-center rounded border bg-white text-gray-600 font-bold active:bg-gray-100 disabled:opacity-30 disabled:pointer-events-none text-[10px] shadow-sm">
+                            ＜
+                        </button>
+                    `;
+        
+                    // ページ番号
+                    for (let i = 1; i <= totalPages; i++) {
+                        if (i === currentRankingPage) {
+                            paginationHtml += `
+                                <span class="w-6 h-6 flex items-center justify-center rounded bg-blue-600 text-white font-extrabold text-[10px] shadow-sm">
+                                    ${i}
+                                </span>
+                            `;
+                        } else {
+                            paginationHtml += `
+                                <button onclick="changeRankingPage(${i})" class="w-6 h-6 flex items-center justify-center rounded border bg-white text-gray-600 font-bold active:bg-gray-100 text-[10px] shadow-sm">
+                                    ${i}
+                                </button>
+                            `;
+                        }
+                    }
+        
+                    // ＞ ボタン
+                    paginationHtml += `
+                        <button onclick="changeRankingPage(${currentRankingPage + 1})" ${currentRankingPage === totalPages ? 'disabled' : ''} class="w-6 h-6 flex items-center justify-center rounded border bg-white text-gray-600 font-bold active:bg-gray-100 disabled:opacity-30 disabled:pointer-events-none text-[10px] shadow-sm">
+                            ＞
+                        </button>
+                    `;
+                    
+                    paginationHtml += `</div>`;
+                    paginationEl.innerHTML = paginationHtml;
+                } else {
+                    paginationEl.innerHTML = '';
+                }
+            }
+        }
+        
+        // 🌟 新しく追加：ランキングのページを切り替える関数
+        function changeRankingPage(newPage) {
+            currentRankingPage = newPage;
+            renderPayoutRanking();
         }
     </script>
     
