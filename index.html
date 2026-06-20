@@ -237,6 +237,8 @@
 
         let searchQuery = "";
         let currentPage = 1;
+        let cachedHistoryLogs = [];       // 🌟 追加：取得した履歴データを保持する変数
+        let currentHistoryPage = 1;       // 🌟 追加：履歴・集計画面用
         const ITEMS_PER_PAGE = 10;
 
         let editInitialState = null;
@@ -1808,35 +1810,18 @@
                 return;
             }
         
-            // 2. 履歴タイムラインの描画
-            const timelineEl = document.getElementById('logs-timeline');
-            if (logs.length === 0) {
-                timelineEl.innerHTML = `<p class="text-xs text-gray-400 text-center py-4">指定期間内に履歴はありません</p>`;
-            } else {
-                timelineEl.innerHTML = logs.map(log => {
-                    const date = new Date(log.created_at).toLocaleString('ja-JP', {month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit'});
-                    const isPayout = log.type === '払い出し';
-                    const badgeColor = isPayout ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-600';
-                    return `
-                        <div class="flex items-center justify-between p-2.5 border-b border-gray-50 text-xs">
-                            <div class="flex-1 min-w-0 pr-2">
-                                <div class="text-[10px] text-gray-400">${date} [${log.drug_name}]</div>
-                                <div class="font-medium text-gray-700 truncate">${log.shizai_name}</div>
-                            </div>
-                            <div class="flex items-center gap-2">
-                                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${badgeColor}">${log.type}</span>
-                                <span class="font-bold text-gray-800 w-8 text-right">${log.quantity}個</span>
-                            </div>
-                        </div>
-                    `;
-                }).join('');
-            }
-
+            // 🌟 取得したデータをグローバル変数に保存し、検索時はページを1に戻す
+            cachedHistoryLogs = logs || [];
+            currentHistoryPage = 1;
+        
+            // 🌟 新設した描画関数を呼び出す（ページネーション付き）
+            renderHistoryTimeline();
+        
             // 3. ランキング集計ロジック (品目ごとに数量を合計)
             const payoutMap = {};
             const arrivalMap = {};
         
-            logs.forEach(log => {
+            cachedHistoryLogs.forEach(log => {
                 const key = `${log.drug_name} - ${log.shizai_name}`;
                 if (log.type === '払い出し') {
                     payoutMap[key] = (payoutMap[key] || 0) + log.quantity;
@@ -1851,31 +1836,122 @@
         
             // 4. ランキング表示の反映
             const renderRanking = (elementId, data) => {
-            const el = document.getElementById(elementId);
-            if (data.length === 0) {
-                el.innerHTML = `<li class="text-gray-400 list-none text-xs">データなし</li>`;
-            } else {
-                // 💡 履歴タイムラインと同じ text-xs に統一し、中の薬品名は text-[10px] で一段小さくメリハリをつけます
-                el.innerHTML = data.map(([name, qty]) => {
-                    const parts = name.split(' - ');
-                    const drugPart = parts[0] ? parts[0] : '';
-                    const shizaiPart = parts[1] ? parts[1] : name;
-                    
-                    return `
-                        <li class="text-xs text-gray-700">
-                            <div class="text-[10px] text-gray-400 font-normal leading-none mb-0.5">${drugPart}</div>
-                            <div class="font-medium">
-                                ${shizaiPart}
-                                <span class="font-bold text-gray-900 whitespace-nowrap ml-0.5">(${qty}個)</span>
-                            </div>
-                        </li>
-                    `;
-                }).join('');
+                const el = document.getElementById(elementId);
+                if (data.length === 0) {
+                    el.innerHTML = `<li class="text-gray-400 list-none text-xs">データなし</li>`;
+                } else {
+                    el.innerHTML = data.map(([name, qty]) => {
+                        const parts = name.split(' - ');
+                        const drugPart = parts[0] ? parts[0] : '';
+                        const shizaiPart = parts[1] ? parts[1] : name;
+                        
+                        return `
+                            <li class="text-xs text-gray-700">
+                                <div class="text-[10px] text-gray-400 font-normal leading-none mb-0.5">${drugPart}</div>
+                                <div class="font-medium">
+                                    ${shizaiPart}
+                                    <span class="font-bold text-gray-900 whitespace-nowrap ml-0.5">(${qty}個)</span>
+                                </div>
+                            </li>
+                        `;
+                    }).join('');
+                }
+            };
+        
+            renderRanking('payout-ranking', sortedPayouts);
+            renderRanking('arrival-ranking', sortedArrivals);
+        }
+
+        // 🌟 新しく追加：10件ずつのページネーション付きで履歴タイムラインを描画する関数
+        function renderHistoryTimeline() {
+            const timelineEl = document.getElementById('logs-timeline');
+            if (!timelineEl) return;
+        
+            if (cachedHistoryLogs.length === 0) {
+                timelineEl.innerHTML = `<p class="text-xs text-gray-400 text-center py-4">指定期間内に履歴はありません</p>`;
+                return;
             }
-        };
-    
-        renderRanking('payout-ranking', sortedPayouts);
-        renderRanking('arrival-ranking', sortedArrivals);
+        
+            // 10件ごとのページ計算
+            const itemsPerPageHistory = 10;
+            const totalItems = cachedHistoryLogs.length;
+            const totalPages = Math.ceil(totalItems / itemsPerPageHistory) || 1;
+        
+            if (currentHistoryPage > totalPages) currentHistoryPage = totalPages;
+            if (currentHistoryPage < 1) currentHistoryPage = 1;
+        
+            const startIndex = (currentHistoryPage - 1) * itemsPerPageHistory;
+            const endIndex = startIndex + itemsPerPageHistory;
+            const pageLogs = cachedHistoryLogs.slice(startIndex, endIndex);
+        
+            // タイムラインのHTML生成
+            let html = pageLogs.map(log => {
+                const date = new Date(log.created_at).toLocaleString('ja-JP', {month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit'});
+                const isPayout = log.type === '払い出し';
+                const badgeColor = isPayout ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-600';
+                return `
+                    <div class="flex items-center justify-between p-2.5 border-b border-gray-50 text-xs">
+                        <div class="flex-1 min-w-0 pr-2">
+                            <div class="text-[10px] text-gray-400">${date} [${log.drug_name}]</div>
+                            <div class="font-medium text-gray-700 truncate">${log.shizai_name}</div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${badgeColor}">${log.type}</span>
+                            <span class="font-bold text-gray-800 w-8 text-right">${log.quantity}個</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        
+            // ページネーション用のナビゲーションボタンを生成
+            if (totalPages > 1) {
+                let paginationHtml = `<div class="flex justify-center items-center gap-1 mt-4 pt-2 pb-2 select-none">`;
+                
+                // ＜ ボタン
+                paginationHtml += `
+                    <button onclick="changeHistoryPage(${currentHistoryPage - 1})" ${currentHistoryPage === 1 ? 'disabled' : ''} class="w-7 h-7 flex items-center justify-center rounded-lg border bg-white text-gray-600 font-bold active:bg-gray-100 disabled:opacity-30 disabled:pointer-events-none text-[10px] shadow-sm">
+                        ＜
+                    </button>
+                `;
+        
+                // ページ番号
+                for (let i = 1; i <= totalPages; i++) {
+                    if (i === currentHistoryPage) {
+                        paginationHtml += `
+                            <span class="w-7 h-7 flex items-center justify-center rounded-lg bg-blue-600 text-white font-extrabold text-[10px] shadow-sm">
+                                ${i}
+                            </span>
+                        `;
+                    } else {
+                        paginationHtml += `
+                            <button onclick="changeHistoryPage(${i})" class="w-7 h-7 flex items-center justify-center rounded-lg border bg-white text-gray-600 font-bold active:bg-gray-100 text-[10px] shadow-sm">
+                                ${i}
+                            </button>
+                        `;
+                    }
+                }
+        
+                // ＞ ボタン
+                paginationHtml += `
+                    <button onclick="changeHistoryPage(${currentHistoryPage + 1})" ${currentHistoryPage === totalPages ? 'disabled' : ''} class="w-7 h-7 flex items-center justify-center rounded-lg border bg-white text-gray-600 font-bold active:bg-gray-100 disabled:opacity-30 disabled:pointer-events-none text-[10px] shadow-sm">
+                        ＞
+                    </button>
+                `;
+                
+                paginationHtml += `</div>`;
+                html += paginationHtml;
+            }
+        
+            timelineEl.innerHTML = html;
+        }
+        
+        // 🌟 新しく追加：履歴のページを切り替える関数
+        function changeHistoryPage(newPage) {
+            currentHistoryPage = newPage;
+            renderHistoryTimeline();
+            
+            // スクロール位置を履歴エリアの少し上にスムーズに戻す
+            document.getElementById('logs-timeline')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }
     </script>
     
