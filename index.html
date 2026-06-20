@@ -2156,14 +2156,12 @@
             if (checkbox) {
                 // 端末(localStorage)に現在のチェック状態を記憶させる
                 localStorage.setItem("prioritize_status_active", checkbox.checked);
-                // リストを現在のソート条件で再描画（既存の関数を呼び出す）
-                if (typeof filterStocks === "function") {
-                    filterStocks();
-                } else if (typeof renderStockList === "function") {
-                    // filterStocksが無い、またはrender側で処理している場合はこちら
-                    // ※お使いの関数名に合わせて調整してください。通常は filterStocks() かと思います。
-                    filterStocks();
+                // 📌 【追加】開いていたアコーディオン詳細を閉じる
+                if (typeof openedCardId !== 'undefined') {
+                    openedCardId = null; 
                 }
+                // リストを現在のソート条件で再描画
+                renderStockList();
             }
         }
     </script>
