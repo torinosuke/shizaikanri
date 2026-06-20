@@ -148,6 +148,13 @@
                         </div>
                     </div>
                 </div>
+
+                <div class="pt-1 flex items-center">
+                    <label class="inline-flex items-center cursor-pointer select-none text-xxs font-bold text-red-600 bg-red-50 hover:bg-red-100/70 px-2 py-1 rounded-md border border-red-200/60 transition active:opacity-75">
+                        <input type="checkbox" id="prioritize-status-checkbox" onchange="toggleStatusPriority()" class="rounded border-red-300 text-red-600 focus:ring-red-400 mr-1.5 w-3.5 h-3.5">
+                        ⚠️ 要発注・取り寄せ中を最優先表示
+                    </label>
+                </div>
             </div>
             
             <div id="drug-kana-indices" class="grid grid-cols-6 gap-1 text-center"></div>
