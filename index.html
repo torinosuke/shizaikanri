@@ -109,7 +109,7 @@
             </div>
         </div>
 
-        <div id="stocks-list-section" class="space-y-3">
+        <div id="stocks-list-section" class="space-y-3 block">
             
             <div id="alert-section" class="mb-4 hidden">
                 <h2 class="text-red-600 font-bold text-sm mb-2">⚠️ 発注が必要な資材（院内全体）</h2>
@@ -150,13 +150,9 @@
                 </div>
             </div>
             
-            <div id="drug-kana-indices" class="grid grid-cols-6 gap-1 text-center">
-                </div>
+            <div id="drug-kana-indices" class="grid grid-cols-6 gap-1 text-center"></div>
 
-                <div id="drug-kana-sub-content" class="hidden p-1.5 bg-gray-50 border border-gray-200 rounded-md flex flex-wrap gap-1">
-                        </div>
-            </div>
-        </div>
+            <div id="drug-kana-sub-content" class="hidden p-1.5 bg-gray-50 border border-gray-200 rounded-md flex flex-wrap gap-1"></div>
 
             <hr class="border-gray-300 my-4">
             
@@ -170,9 +166,7 @@
                 <button id="prev-page-btn" onclick="changePage(-1)" class="bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-700 font-bold py-1.5 px-3 rounded-lg transition disabled:opacity-40 page-btn">
                     ◀ 前へ
                 </button>
-                <span id="page-info" class="font-bold text-gray-600 select-none">
-                    1 / 1 ページ
-                </span>
+                <span id="page-info" class="font-bold text-gray-600 select-none">1 / 1 ページ</span>
                 <button id="next-page-btn" onclick="changePage(1)" class="bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-700 font-bold py-1.5 px-3 rounded-lg transition disabled:opacity-40 page-btn">
                     次へ ▶
                 </button>
@@ -198,21 +192,18 @@
         
                 <div class="bg-white p-4 rounded-2xl border border-gray-200 shadow-sm mb-4">
                     <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">🔥 払い出し数上位（指定期間内）</h3>
-                    <ul id="payout-ranking" class="space-y-3 pl-0 list-none">
-                        </ul>
+                    <ul id="payout-ranking" class="space-y-3 pl-0 list-none"></ul>
                     <div id="ranking-pagination" class="mt-3"></div>
                 </div>
             </div>
         
             <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-200">
                 <h2 class="text-sm font-bold text-gray-700 mb-3">履歴一覧（新着順）</h2>
-                <div id="logs-timeline" class="space-y-2 max-h-[400px] overflow-y-auto">
-                    </div>
+                <div id="logs-timeline" class="space-y-2 max-h-[400px] overflow-y-auto"></div>
             </div>
         </div>
 
     </main>
-
     <script>
         const SUPABASE_URL = "https://kkxpqxaxthrcxdvrmbty.supabase.co";
         const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtreHBxeGF4dGhyY3hkdnJtYnR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3NzMzODgsImV4cCI6MjA5NjM0OTM4OH0.Ptcn2lYMqbn4L5g1sV7r6E372cxfIyhsxgAkH7a65aU";
